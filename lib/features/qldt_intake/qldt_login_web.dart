@@ -192,8 +192,7 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            if (_syncing)
-              const LinearProgressIndicator(minHeight: 3),
+            if (_syncing) const LinearProgressIndicator(minHeight: 3),
             if (_syncing) const SizedBox(height: 14),
             Text(
               _status,
@@ -209,10 +208,7 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
         ),
       ),
       actions: <Widget>[
-        TextButton(
-          onPressed: _cancel,
-          child: Text(_failed ? 'Đóng' : 'Hủy'),
-        ),
+        TextButton(onPressed: _cancel, child: Text(_failed ? 'Đóng' : 'Hủy')),
         if (_failed)
           FilledButton.icon(
             onPressed: _startAutoLogin,
