@@ -4,13 +4,20 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/schedule_widget_background"
-    android:clipChildren="false"
-    android:clipToPadding="false">
+    android:clipChildren="true"
+    android:clipToPadding="true">
 
+    <!--
+      StackView natively flicks along its Y axis. The 90 degree rotation maps
+      that gesture to a horizontal swipe. It deliberately extends beyond the
+      nominal 250x64 widget size and is clipped by the root, so every visible
+      pixel of the widget belongs to the swipe surface instead of leaving dead
+      strips near the edges on launchers with slightly different cell sizing.
+    -->
     <StackView
         android:id="@+id/widget_stack"
-        android:layout_width="64dp"
-        android:layout_height="250dp"
+        android:layout_width="88dp"
+        android:layout_height="320dp"
         android:layout_gravity="center"
         android:animateFirstView="false"
         android:loopViews="true"
