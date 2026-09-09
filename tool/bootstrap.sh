@@ -96,7 +96,15 @@ PY
 
   if [[ -n "${sdkmanager_bin}" ]]; then
     yes | "${sdkmanager_bin}" --licenses >/dev/null 2>&1 || true
-    "${sdkmanager_bin}" "platforms;android-37"
+    "${sdkmanager_bin}" "cmdline-tools;latest" || true
+
+    sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+    if [[ -n "${sdk_root}" && -x "${sdk_root}/cmdline-tools/latest/bin/sdkmanager" ]]; then
+      sdkmanager_bin="${sdk_root}/cmdline-tools/latest/bin/sdkmanager"
+    fi
+
+    yes | "${sdkmanager_bin}" --licenses >/dev/null 2>&1 || true
+    "${sdkmanager_bin}" --channel=3 "platforms;android-37"
   fi
 fi
 
