@@ -8,20 +8,24 @@
     android:clipToPadding="true">
 
     <!--
-      StackView natively flicks along its Y axis. The 90 degree rotation maps
-      that gesture to a horizontal swipe. It deliberately extends beyond the
-      nominal 250x64 widget size and is clipped by the root, so every visible
-      pixel of the widget belongs to the swipe surface instead of leaving dead
-      strips near the edges on launchers with slightly different cell sizing.
+      AppWidget RemoteViews does not support ViewPager. A ListView is rotated
+      90 degrees so its native vertical drag becomes a horizontal drag on the
+      launcher. Unlike StackView, ListView renders one full-size row after the
+      next instead of compositing several cards on top of each other.
     -->
-    <StackView
-        android:id="@+id/widget_stack"
+    <ListView
+        android:id="@+id/widget_list"
         android:layout_width="88dp"
         android:layout_height="320dp"
         android:layout_gravity="center"
-        android:animateFirstView="false"
-        android:loopViews="true"
-        android:rotation="90" />
+        android:clipToPadding="false"
+        android:divider="@null"
+        android:dividerHeight="0dp"
+        android:fadeScrollbars="false"
+        android:fadingEdge="none"
+        android:overScrollMode="never"
+        android:rotation="90"
+        android:scrollbars="none" />
 
     <TextView
         android:id="@+id/widget_empty"
