@@ -1,4 +1,4 @@
-// This file is selected only for Flutter Web and must talk to the local Chrome
+// This file is selected only for Flutter Web and talks to the local Chrome
 // bridge through browser DOM events; the mobile implementation never imports it.
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 
@@ -26,12 +26,16 @@ class _WebQldtBridgeDialog extends StatefulWidget {
 }
 
 class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
-  static const _requestEvent = 'better-phenikaa-request-qldt';
+  static const _startEvent = 'better-phenikaa-start-qldt-login';
+  static const _cancelEvent = 'better-phenikaa-cancel-qldt-login';
   static const _resultEvent = 'better-phenikaa-qldt-result';
   static const _errorEvent = 'better-phenikaa-qldt-error';
+  static const _bridgeReadyEvent = 'better-phenikaa-bridge-ready';
 
+  bool _started = false;
   bool _syncing = false;
-  String _status = '';
+  bool _failed = false;
+  String _status = 'Đang chuẩn bị kết nối QLĐT...';
 
   bool get _bridgeReady =>
       html.document.documentElement?.dataset['betterPhenikaaBridge'] == 'ready';
@@ -41,29 +45,32 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
     super.initState();
     html.window.addEventListener(_resultEvent, _onResult);
     html.window.addEventListener(_errorEvent, _onError);
+    html.window.addEventListener(_bridgeReadyEvent, _onBridgeReady);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startAutoLogin());
   }
 
   @override
   void dispose() {
     html.window.removeEventListener(_resultEvent, _onResult);
     html.window.removeEventListener(_errorEvent, _onError);
+    html.window.removeEventListener(_bridgeReadyEvent, _onBridgeReady);
     super.dispose();
   }
 
-  void _openQldt() {
-    html.window.open(
-      'https://qldtbeta.phenikaa-uni.edu.vn/',
-      'betterPhenikaaQldt',
-    );
-    setState(() {
-      _status = 'Đăng nhập Microsoft trên tab QLĐT chính thức. Giữ tab đó mở rồi quay lại đây.';
-    });
+  void _onBridgeReady(html.Event _) {
+    if (!_started) {
+      _startAutoLogin();
+    }
   }
 
-  void _requestSync() {
+  void _startAutoLogin() {
+    if (!mounted || _syncing) {
+      return;
+    }
     if (!_bridgeReady) {
       setState(() {
-        _status = 'Chưa phát hiện Better Phenikaa Web Bridge. Hãy bật tiện ích cầu nối rồi tải lại trang.';
+        _failed = true;
+        _status = 'Chưa phát hiện Better Phenikaa Web Bridge. Hãy bật extension rồi tải lại trang.';
       });
       return;
     }
@@ -78,10 +85,17 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
     });
 
     setState(() {
+      _started = true;
       _syncing = true;
-      _status = 'Đang đọc lịch từ tab QLĐT đã đăng nhập...';
+      _failed = false;
+      _status = 'QLĐT đang được mở. Hãy đăng nhập Microsoft; sau khi lấy xong lịch, tab QLĐT sẽ tự đóng và app đăng nhập tự động.';
     });
-    html.window.dispatchEvent(html.CustomEvent(_requestEvent, detail: payload));
+    html.window.dispatchEvent(html.CustomEvent(_startEvent, detail: payload));
+  }
+
+  void _cancel() {
+    html.window.dispatchEvent(html.CustomEvent(_cancelEvent));
+    Navigator.of(context).pop();
   }
 
   void _onResult(html.Event event) {
@@ -103,6 +117,7 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
       if (mounted) {
         setState(() {
           _syncing = false;
+          _failed = true;
           _status = 'Không đọc được dữ liệu QLĐT: $error';
         });
       }
@@ -123,6 +138,7 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
     }
     setState(() {
       _syncing = false;
+      _failed = true;
       _status = message;
     });
   }
@@ -135,7 +151,7 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
         children: <Widget>[
           Icon(Icons.verified_user_outlined, color: Color(0xFF1747B5)),
           SizedBox(width: 10),
-          Expanded(child: Text('Kết nối QLĐT trên web')),
+          Expanded(child: Text('Đăng nhập QLĐT')),
         ],
       ),
       content: ConstrainedBox(
@@ -144,13 +160,6 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              bridgeReady
-                  ? 'Web Bridge đã sẵn sàng. Mật khẩu chỉ được nhập trên trang Microsoft/QLĐT chính thức.'
-                  : 'GitHub Pages bị giới hạn bởi same-origin/CORS. Bản web dùng một tiện ích cầu nối cục bộ để đọc đúng tab QLĐT bạn đã đăng nhập, không gửi mật khẩu qua server trung gian.',
-              style: const TextStyle(height: 1.45),
-            ),
-            const SizedBox(height: 14),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -173,50 +182,43 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      bridgeReady ? 'Better Phenikaa Web Bridge: đã bật' : 'Chưa phát hiện Web Bridge. Nạp thư mục tools/web_qldt_bridge dưới dạng Chrome extension rồi tải lại trang.',
+                      bridgeReady
+                          ? 'Web Bridge đã bật · tự động đồng bộ sau đăng nhập'
+                          : 'Chưa phát hiện Web Bridge',
                       style: const TextStyle(fontSize: 13, height: 1.35),
                     ),
                   ),
                 ],
               ),
             ),
-            if (_status.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 14),
-              Text(
-                _status,
-                style: const TextStyle(
-                  color: Color(0xFF4F628B),
-                  fontSize: 13,
-                  height: 1.4,
-                ),
+            const SizedBox(height: 16),
+            if (_syncing)
+              const LinearProgressIndicator(minHeight: 3),
+            if (_syncing) const SizedBox(height: 14),
+            Text(
+              _status,
+              style: TextStyle(
+                color: _failed
+                    ? const Color(0xFFB42318)
+                    : const Color(0xFF4F628B),
+                fontSize: 13,
+                height: 1.45,
               ),
-            ],
+            ),
           ],
         ),
       ),
       actions: <Widget>[
         TextButton(
-          onPressed: _syncing ? null : () => Navigator.of(context).pop(),
-          child: const Text('Đóng'),
+          onPressed: _cancel,
+          child: Text(_failed ? 'Đóng' : 'Hủy'),
         ),
-        OutlinedButton.icon(
-          onPressed: _syncing ? null : _openQldt,
-          icon: const Icon(Icons.open_in_new_rounded),
-          label: const Text('Mở QLĐT'),
-        ),
-        FilledButton.icon(
-          onPressed: bridgeReady && !_syncing ? _requestSync : null,
-          icon: _syncing
-              ? const SizedBox.square(
-                  dimension: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.sync_rounded),
-          label: Text(_syncing ? 'Đang đồng bộ' : 'Đã đăng nhập · Đồng bộ'),
-        ),
+        if (_failed)
+          FilledButton.icon(
+            onPressed: _startAutoLogin,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Thử lại'),
+          ),
       ],
     );
   }
