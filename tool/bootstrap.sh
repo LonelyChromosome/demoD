@@ -140,6 +140,14 @@ receiver = '''        <receiver
 if '.ScheduleWidgetProvider' not in text:
     text = text.replace('    </application>', receiver + '    </application>', 1)
 
+service = '''        <service
+            android:name=".ScheduleWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+'''
+if '.ScheduleWidgetService' not in text:
+    text = text.replace('    </application>', service + '    </application>', 1)
+
 text = re.sub(
     r'android:label="[^"]*"',
     'android:label="Better Phenikaa App"',
