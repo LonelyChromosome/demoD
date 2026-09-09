@@ -1,5 +1,6 @@
 (() => {
-  const REQUEST_EVENT = 'better-phenikaa-request-qldt';
+  const START_EVENT = 'better-phenikaa-start-qldt-login';
+  const CANCEL_EVENT = 'better-phenikaa-cancel-qldt-login';
   const RESULT_EVENT = 'better-phenikaa-qldt-result';
   const ERROR_EVENT = 'better-phenikaa-qldt-error';
 
@@ -16,53 +17,64 @@
     document.addEventListener('DOMContentLoaded', markReady, { once: true });
   }
 
-  window.addEventListener(REQUEST_EVENT, async (event) => {
+  window.addEventListener(START_EVENT, async (event) => {
     let payload = {};
     try {
       payload = JSON.parse(String(event.detail || '{}'));
     } catch (_) {
-      window.dispatchEvent(
-        new CustomEvent(ERROR_EVENT, {
-          detail: JSON.stringify({ message: 'Yêu cầu đồng bộ web không hợp lệ.' }),
-        }),
-      );
+      emitError('Yêu cầu đăng nhập web không hợp lệ.', 'bad_payload');
       return;
     }
 
     try {
       const response = await chrome.runtime.sendMessage({
-        type: 'betterPhenikaaSyncQldt',
+        type: 'betterPhenikaaStartAutoLogin',
         start: payload.start,
         end: payload.end,
       });
-
-      if (response && response.ok) {
-        window.dispatchEvent(
-          new CustomEvent(RESULT_EVENT, {
-            detail: JSON.stringify(response),
-          }),
+      if (!response?.ok) {
+        emitError(
+          response?.message || 'Không thể mở phiên đăng nhập QLĐT.',
+          response?.code,
         );
-        return;
       }
-
-      window.dispatchEvent(
-        new CustomEvent(ERROR_EVENT, {
-          detail: JSON.stringify({
-            message:
-              (response && response.message) ||
-              'Không đọc được dữ liệu từ tab QLĐT.',
-            code: response && response.code,
-          }),
-        }),
-      );
     } catch (error) {
-      window.dispatchEvent(
-        new CustomEvent(ERROR_EVENT, {
-          detail: JSON.stringify({
-            message: `Web Bridge gặp lỗi: ${String(error)}`,
-          }),
-        }),
-      );
+      emitError(`Web Bridge gặp lỗi: ${String(error)}`, 'bridge_error');
     }
   });
+
+  window.addEventListener(CANCEL_EVENT, () => {
+    void chrome.runtime.sendMessage({ type: 'betterPhenikaaCancelAutoLogin' });
+  });
+
+  chrome.runtime.onMessage.addListener((message) => {
+    if (!message || typeof message.type !== 'string') {
+      return false;
+    }
+
+    if (message.type === 'betterPhenikaaAutoLoginResult') {
+      window.dispatchEvent(
+        new CustomEvent(RESULT_EVENT, {
+          detail: JSON.stringify(message.response || {}),
+        }),
+      );
+      return false;
+    }
+
+    if (message.type === 'betterPhenikaaAutoLoginError') {
+      emitError(
+        message.response?.message || 'Không thể đồng bộ QLĐT.',
+        message.response?.code,
+      );
+    }
+    return false;
+  });
+
+  function emitError(message, code) {
+    window.dispatchEvent(
+      new CustomEvent(ERROR_EVENT, {
+        detail: JSON.stringify({ message, code }),
+      }),
+    );
+  }
 })();
