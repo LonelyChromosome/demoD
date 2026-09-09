@@ -18,3 +18,8 @@ analyzer:
 linter:
   rules:
     public_member_api_docs: false
+    # These two rules are stylistic only; disabling them keeps CI focused on
+    # correctness while preserving readable Vietnamese UI strings and simple
+    # imperative WebView code.
+    lines_longer_than_80_chars: false
+    cascade_invocations: false
