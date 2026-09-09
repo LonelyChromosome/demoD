@@ -1,15 +1,14 @@
 import 'dart:async';
 
+import 'package:better_phenikaa_schedule/features/qldt_intake/qldt_login.dart';
+import 'package:better_phenikaa_schedule/features/qldt_intake/qldt_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../features/qldt_intake/qldt_login.dart';
-import '../features/qldt_intake/qldt_models.dart';
-
 class BetterPhenikaaScheduleApp extends StatelessWidget {
-  const BetterPhenikaaScheduleApp({super.key});
+  const new({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +39,7 @@ class BetterPhenikaaScheduleApp extends StatelessWidget {
 enum _AppPage { timetable, exam, account }
 
 class _AppRoot extends StatefulWidget {
-  const _AppRoot();
+  const new();
 
   @override
   State<_AppRoot> createState() => _AppRootState();
@@ -112,8 +111,9 @@ class _AppRootState extends State<_AppRoot> {
     final now = data.source == 'demo'
         ? DateTime(2026, 8, 26, 6)
         : DateTime.now();
-    final future = data.classes.where((item) => !item.endAt.isBefore(now)).toList()
-      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+    final future =
+        data.classes.where((item) => !item.endAt.isBefore(now)).toList()
+          ..sort((a, b) => a.startAt.compareTo(b.startAt));
     return future.isEmpty ? null : future.first;
   }
 
@@ -203,12 +203,15 @@ class _AppRootState extends State<_AppRoot> {
     if (data.classes.any((record) => _sameDay(record.startAt, today))) {
       return today;
     }
-    final future = data.classes.where((record) => !record.startAt.isBefore(today)).toList()
-      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+    final future =
+        data.classes.where((record) => !record.startAt.isBefore(today)).toList()
+          ..sort((a, b) => a.startAt.compareTo(b.startAt));
     if (future.isNotEmpty) {
       return _dateOnly(future.first.startAt);
     }
-    return data.classes.isNotEmpty ? _dateOnly(data.classes.last.startAt) : today;
+    return data.classes.isNotEmpty
+        ? _dateOnly(data.classes.last.startAt)
+        : today;
   }
 
   void _openPage(_AppPage page) {
@@ -241,7 +244,10 @@ class _AppRootState extends State<_AppRoot> {
                   ),
                   child: Container(
                     margin: desktop
-                        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
+                        ? const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          )
                         : EdgeInsets.zero,
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -262,35 +268,32 @@ class _AppRootState extends State<_AppRoot> {
                       child: _booting
                           ? const _SplashScreen()
                           : _data == null
-                              ? _LoginScreen(
-                                  onLogin: _loginOrSync,
-                                  onDemo: _loadDemo,
-                                  supportsLive: supportsLiveQldtLogin,
-                                )
-                              : _MainShell(
-                                  data: _data!,
-                                  page: _page,
-                                  selectedDate: _selectedDate,
-                                  showPastExams: _showPastExams,
-                                  panelOpen: _panelOpen,
-                                  syncing: _syncing,
-                                  errorMessage: _errorMessage,
-                                  onTogglePanel: () => setState(
-                                    () => _panelOpen = !_panelOpen,
-                                  ),
-                                  onOpenPage: _openPage,
-                                  onSync: _loginOrSync,
-                                  onLogout: _logout,
-                                  onDateChanged: (date) => setState(
-                                    () => _selectedDate = _dateOnly(date),
-                                  ),
-                                  onExamTabChanged: (past) => setState(
-                                    () => _showPastExams = past,
-                                  ),
-                                  onDismissError: () => setState(
-                                    () => _errorMessage = null,
-                                  ),
-                                ),
+                          ? _LoginScreen(
+                              onLogin: _loginOrSync,
+                              onDemo: _loadDemo,
+                              supportsLive: supportsLiveQldtLogin,
+                            )
+                          : _MainShell(
+                              data: _data!,
+                              page: _page,
+                              selectedDate: _selectedDate,
+                              showPastExams: _showPastExams,
+                              panelOpen: _panelOpen,
+                              syncing: _syncing,
+                              errorMessage: _errorMessage,
+                              onTogglePanel: () =>
+                                  setState(() => _panelOpen = !_panelOpen),
+                              onOpenPage: _openPage,
+                              onSync: _loginOrSync,
+                              onLogout: _logout,
+                              onDateChanged: (date) => setState(
+                                () => _selectedDate = _dateOnly(date),
+                              ),
+                              onExamTabChanged: (past) =>
+                                  setState(() => _showPastExams = past),
+                              onDismissError: () =>
+                                  setState(() => _errorMessage = null),
+                            ),
                     ),
                   ),
                 ),
@@ -304,7 +307,7 @@ class _AppRootState extends State<_AppRoot> {
 }
 
 class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
+  const new();
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +352,7 @@ class _SplashScreen extends StatelessWidget {
 }
 
 class _LoginScreen extends StatelessWidget {
-  const _LoginScreen({
+  const new({
     required this.onLogin,
     required this.onDemo,
     required this.supportsLive,
@@ -459,7 +462,7 @@ class _LoginScreen extends StatelessWidget {
 }
 
 class _MainShell extends StatelessWidget {
-  const _MainShell({
+  const new({
     required this.data,
     required this.page,
     required this.selectedDate,
@@ -495,20 +498,20 @@ class _MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final child = switch (page) {
       _AppPage.timetable => _TimetableScreen(
-          data: data,
-          selectedDate: selectedDate,
-          onDateChanged: onDateChanged,
-        ),
+        data: data,
+        selectedDate: selectedDate,
+        onDateChanged: onDateChanged,
+      ),
       _AppPage.exam => _ExamScreen(
-          data: data,
-          showPast: showPastExams,
-          onTabChanged: onExamTabChanged,
-        ),
+        data: data,
+        showPast: showPastExams,
+        onTabChanged: onExamTabChanged,
+      ),
       _AppPage.account => _AccountScreen(
-          data: data,
-          onLogout: onLogout,
-          onSync: onSync,
-        ),
+        data: data,
+        onLogout: onLogout,
+        onSync: onSync,
+      ),
     };
 
     return _PhoneSurface(
@@ -568,7 +571,7 @@ class _MainShell extends StatelessWidget {
 }
 
 class _TimetableScreen extends StatelessWidget {
-  const _TimetableScreen({
+  const new({
     required this.data,
     required this.selectedDate,
     required this.onDateChanged,
@@ -591,9 +594,7 @@ class _TimetableScreen extends StatelessWidget {
         if (velocity.abs() < 180) {
           return;
         }
-        onDateChanged(
-          selectedDate.add(Duration(days: velocity < 0 ? 1 : -1)),
-        );
+        onDateChanged(selectedDate.add(Duration(days: velocity < 0 ? 1 : -1)));
       },
       child: Padding(
         padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
@@ -607,12 +608,10 @@ class _TimetableScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _DateNavigator(
               date: selectedDate,
-              onPrevious: () => onDateChanged(
-                selectedDate.subtract(const Duration(days: 1)),
-              ),
-              onNext: () => onDateChanged(
-                selectedDate.add(const Duration(days: 1)),
-              ),
+              onPrevious: () =>
+                  onDateChanged(selectedDate.subtract(const Duration(days: 1))),
+              onNext: () =>
+                  onDateChanged(selectedDate.add(const Duration(days: 1))),
             ),
             const SizedBox(height: 18),
             Expanded(
@@ -625,7 +624,7 @@ class _TimetableScreen extends StatelessWidget {
                   : ListView.separated(
                       padding: const EdgeInsets.only(bottom: 82),
                       itemCount: items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
                       itemBuilder: (context, index) => _ScheduleCard(
                         item: items[index],
                         accent: _accentFor(index),
@@ -640,7 +639,7 @@ class _TimetableScreen extends StatelessWidget {
 }
 
 class _ExamScreen extends StatelessWidget {
-  const _ExamScreen({
+  const new({
     required this.data,
     required this.showPast,
     required this.onTabChanged,
@@ -655,11 +654,13 @@ class _ExamScreen extends StatelessWidget {
     final referenceNow = data.source == 'demo'
         ? DateTime(2026, 8, 26, 6)
         : DateTime.now();
-    final exams = data.exams.where((record) {
-      return showPast
-          ? record.endAt.isBefore(referenceNow)
-          : !record.endAt.isBefore(referenceNow);
-    }).toList(growable: false);
+    final exams = data.exams
+        .where((record) {
+          return showPast
+              ? record.endAt.isBefore(referenceNow)
+              : !record.endAt.isBefore(referenceNow);
+        })
+        .toList(growable: false);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
@@ -671,23 +672,23 @@ class _ExamScreen extends StatelessWidget {
             badge: data.source == 'demo' ? 'DEMO' : null,
           ),
           const SizedBox(height: 20),
-          _SegmentTabs(
-            showPast: showPast,
-            onChanged: onTabChanged,
-          ),
+          _SegmentTabs(showPast: showPast, onChanged: onTabChanged),
           const SizedBox(height: 18),
           Expanded(
             child: exams.isEmpty
                 ? _EmptyState(
                     icon: Icons.assignment_turned_in_outlined,
-                    title: showPast ? 'Chưa có kỳ thi đã qua' : 'Chưa có lịch thi sắp tới',
+                    title: showPast
+                        ? 'Chưa có kỳ thi đã qua'
+                        : 'Chưa có lịch thi sắp tới',
                     message: 'Dữ liệu sẽ được cập nhật sau lần đồng bộ QLĐT tiếp theo.',
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.only(bottom: 82),
                     itemCount: exams.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) => _ExamCard(item: exams[index]),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) =>
+                        _ExamCard(item: exams[index]),
                   ),
           ),
         ],
@@ -697,11 +698,7 @@ class _ExamScreen extends StatelessWidget {
 }
 
 class _AccountScreen extends StatelessWidget {
-  const _AccountScreen({
-    required this.data,
-    required this.onLogout,
-    required this.onSync,
-  });
+  const new({required this.data, required this.onLogout, required this.onSync});
 
   final ImportedScheduleData data;
   final VoidCallback onLogout;
@@ -725,12 +722,18 @@ class _AccountScreen extends StatelessWidget {
               const CircleAvatar(
                 radius: 38,
                 backgroundColor: Color(0xFF3F76DC),
-                child: Icon(Icons.person_rounded, color: Colors.white, size: 48),
+                child: Icon(
+                  Icons.person_rounded,
+                  color: Colors.white,
+                  size: 48,
+                ),
               ),
               const SizedBox(width: 18),
               Expanded(
                 child: Text(
-                  data.displayName.isEmpty ? 'Người dùng QLĐT' : data.displayName,
+                  data.displayName.isEmpty
+                      ? 'Người dùng QLĐT'
+                      : data.displayName,
                   style: const TextStyle(
                     color: Color(0xFF102B73),
                     fontSize: 18,
@@ -768,7 +771,10 @@ class _AccountScreen extends StatelessWidget {
                 ),
               ),
               icon: const Icon(Icons.logout_rounded, size: 19),
-              label: const Text('Đăng xuất', style: TextStyle(fontWeight: FontWeight.w700)),
+              label: const Text(
+                'Đăng xuất',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ),
           const SizedBox(height: 76),
@@ -784,14 +790,17 @@ class _AccountScreen extends StatelessWidget {
     final reference = data.source == 'demo'
         ? DateTime(2026, 8, 26, 6)
         : DateTime.now();
-    final items = data.classes.where((record) => !record.endAt.isBefore(reference)).toList()
-      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+    final items =
+        data.classes
+            .where((record) => !record.endAt.isBefore(reference))
+            .toList()
+          ..sort((a, b) => a.startAt.compareTo(b.startAt));
     return items.isEmpty ? null : items.first;
   }
 }
 
 class _TopTitle extends StatelessWidget {
-  const _TopTitle({required this.title, this.badge});
+  const new({required this.title, this.badge});
 
   final String title;
   final String? badge;
@@ -834,7 +843,7 @@ class _TopTitle extends StatelessWidget {
 }
 
 class _DateNavigator extends StatelessWidget {
-  const _DateNavigator({
+  const new({
     required this.date,
     required this.onPrevious,
     required this.onNext,
@@ -848,7 +857,10 @@ class _DateNavigator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        IconButton(onPressed: onPrevious, icon: const Icon(Icons.chevron_left_rounded)),
+        IconButton(
+          onPressed: onPrevious,
+          icon: const Icon(Icons.chevron_left_rounded),
+        ),
         Expanded(
           child: Text(
             _dateLabel(date),
@@ -859,14 +871,17 @@ class _DateNavigator extends StatelessWidget {
             ),
           ),
         ),
-        IconButton(onPressed: onNext, icon: const Icon(Icons.chevron_right_rounded)),
+        IconButton(
+          onPressed: onNext,
+          icon: const Icon(Icons.chevron_right_rounded),
+        ),
       ],
     );
   }
 }
 
 class _ScheduleCard extends StatelessWidget {
-  const _ScheduleCard({required this.item, required this.accent});
+  const new({required this.item, required this.accent});
 
   final ScheduleRecord item;
   final Color accent;
@@ -879,7 +894,11 @@ class _ScheduleCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: const <BoxShadow>[
-          BoxShadow(color: Color(0x0F193B80), blurRadius: 18, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x0F193B80),
+            blurRadius: 18,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Row(
@@ -888,7 +907,9 @@ class _ScheduleCard extends StatelessWidget {
             width: 4,
             decoration: BoxDecoration(
               color: accent,
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(14),
+              ),
             ),
           ),
           Padding(
@@ -919,14 +940,18 @@ class _ScheduleCard extends StatelessWidget {
                   ),
                   if (item.room.isNotEmpty) ...<Widget>[
                     const SizedBox(height: 8),
-                    _MetaLine(icon: Icons.location_on_outlined, text: item.room),
+                    _MetaLine(
+                      icon: Icons.location_on_outlined,
+                      text: item.room,
+                    ),
                   ],
                   const SizedBox(height: 5),
                   _MetaLine(
                     icon: Icons.access_time_rounded,
                     text: '${_time(item.startAt)} - ${_time(item.endAt)}',
                   ),
-                  if (item.periodStart != null && item.periodEnd != null) ...<Widget>[
+                  if (item.periodStart != null &&
+                      item.periodEnd != null) ...<Widget>[
                     const SizedBox(height: 5),
                     _MetaLine(
                       icon: Icons.menu_book_outlined,
@@ -944,7 +969,7 @@ class _ScheduleCard extends StatelessWidget {
 }
 
 class _ExamCard extends StatelessWidget {
-  const _ExamCard({required this.item});
+  const new({required this.item});
 
   final ScheduleRecord item;
 
@@ -956,7 +981,11 @@ class _ExamCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(13),
         boxShadow: const <BoxShadow>[
-          BoxShadow(color: Color(0x0E193B80), blurRadius: 16, offset: Offset(0, 5)),
+          BoxShadow(
+            color: Color(0x0E193B80),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
         ],
       ),
       child: Row(
@@ -980,7 +1009,10 @@ class _ExamCard extends StatelessWidget {
                 ),
                 Text(
                   'THG ${item.startAt.month}',
-                  style: const TextStyle(color: Color(0xFF7583A4), fontSize: 10),
+                  style: const TextStyle(
+                    color: Color(0xFF7583A4),
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ),
@@ -1001,7 +1033,10 @@ class _ExamCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     item.examForm,
-                    style: const TextStyle(color: Color(0xFF8A5A3B), fontSize: 11),
+                    style: const TextStyle(
+                      color: Color(0xFF8A5A3B),
+                      fontSize: 11,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 7),
@@ -1023,7 +1058,7 @@ class _ExamCard extends StatelessWidget {
 }
 
 class _SegmentTabs extends StatelessWidget {
-  const _SegmentTabs({required this.showPast, required this.onChanged});
+  const new({required this.showPast, required this.onChanged});
 
   final bool showPast;
   final ValueChanged<bool> onChanged;
@@ -1059,7 +1094,7 @@ class _SegmentTabs extends StatelessWidget {
 }
 
 class _TabButton extends StatelessWidget {
-  const _TabButton({required this.label, required this.selected, required this.onTap});
+  const new({required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
@@ -1096,7 +1131,7 @@ class _TabButton extends StatelessWidget {
 }
 
 class _InfoPanel extends StatelessWidget {
-  const _InfoPanel({required this.data});
+  const new({required this.data});
 
   final ImportedScheduleData data;
 
@@ -1121,7 +1156,10 @@ class _InfoPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _AccountInfoRow(label: 'Lịch học', value: '${data.classes.length} mục'),
+          _AccountInfoRow(
+            label: 'Lịch học',
+            value: '${data.classes.length} mục',
+          ),
           const SizedBox(height: 8),
           _AccountInfoRow(label: 'Lịch thi', value: '${data.exams.length} mục'),
           const SizedBox(height: 8),
@@ -1141,7 +1179,7 @@ class _InfoPanel extends StatelessWidget {
 }
 
 class _AccountInfoRow extends StatelessWidget {
-  const _AccountInfoRow({required this.label, required this.value});
+  const new({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -1151,7 +1189,10 @@ class _AccountInfoRow extends StatelessWidget {
     return Row(
       children: <Widget>[
         Expanded(
-          child: Text(label, style: const TextStyle(color: Color(0xFF7180A0), fontSize: 12)),
+          child: Text(
+            label,
+            style: const TextStyle(color: Color(0xFF7180A0), fontSize: 12),
+          ),
         ),
         Text(
           value,
@@ -1167,7 +1208,7 @@ class _AccountInfoRow extends StatelessWidget {
 }
 
 class _WidgetPreview extends StatelessWidget {
-  const _WidgetPreview({required this.item});
+  const new({required this.item});
 
   final ScheduleRecord item;
 
@@ -1178,7 +1219,10 @@ class _WidgetPreview extends StatelessWidget {
       children: <Widget>[
         const Text(
           'Widget 1×4',
-          style: TextStyle(color: Color(0xFF18336F), fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: Color(0xFF18336F),
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 8),
         Container(
@@ -1195,16 +1239,30 @@ class _WidgetPreview extends StatelessWidget {
             children: <Widget>[
               Text(
                 item.subjectName,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 7),
               Row(
                 children: <Widget>[
-                  const Icon(Icons.location_on_outlined, color: Colors.white70, size: 15),
+                  const Icon(
+                    Icons.location_on_outlined,
+                    color: Colors.white70,
+                    size: 15,
+                  ),
                   const SizedBox(width: 5),
-                  Text(item.room, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    item.room,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
                   const Spacer(),
-                  const Icon(Icons.access_time_rounded, color: Colors.white70, size: 15),
+                  const Icon(
+                    Icons.access_time_rounded,
+                    color: Colors.white70,
+                    size: 15,
+                  ),
                   const SizedBox(width: 5),
                   Text(
                     '${_time(item.startAt)} - ${_time(item.endAt)}',
@@ -1221,7 +1279,7 @@ class _WidgetPreview extends StatelessWidget {
 }
 
 class _ControlPanel extends StatelessWidget {
-  const _ControlPanel({
+  const new({
     required this.page,
     required this.onOpenPage,
     required this.onSync,
@@ -1273,7 +1331,7 @@ class _ControlPanel extends StatelessWidget {
 }
 
 class _PanelAction extends StatelessWidget {
-  const _PanelAction({
+  const new({
     required this.label,
     required this.icon,
     required this.color,
@@ -1300,9 +1358,15 @@ class _PanelAction extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(30),
-            border: selected ? Border.all(color: color.withValues(alpha: .35)) : null,
+            border: selected
+                ? Border.all(color: color.withValues(alpha: .35))
+                : null,
             boxShadow: const <BoxShadow>[
-              BoxShadow(color: Color(0x28112452), blurRadius: 16, offset: Offset(0, 6)),
+              BoxShadow(
+                color: Color(0x28112452),
+                blurRadius: 16,
+                offset: Offset(0, 6),
+              ),
             ],
           ),
           child: Row(
@@ -1330,7 +1394,7 @@ class _PanelAction extends StatelessWidget {
 }
 
 class _MetaLine extends StatelessWidget {
-  const _MetaLine({required this.icon, required this.text});
+  const new({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -1353,7 +1417,7 @@ class _MetaLine extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.title, required this.message});
+  const new({required this.icon, required this.title, required this.message});
 
   final IconData icon;
   final String title;
@@ -1381,7 +1445,11 @@ class _EmptyState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF7A88A7), height: 1.45, fontSize: 13),
+              style: const TextStyle(
+                color: Color(0xFF7A88A7),
+                height: 1.45,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
@@ -1391,7 +1459,7 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message, required this.onDismiss});
+  const new({required this.message, required this.onDismiss});
 
   final String message;
   final VoidCallback onDismiss;
@@ -1427,7 +1495,7 @@ class _ErrorBanner extends StatelessWidget {
 }
 
 class _PhoneSurface extends StatelessWidget {
-  const _PhoneSurface({required this.child});
+  const new({required this.child});
 
   final Widget child;
 
@@ -1441,7 +1509,7 @@ class _PhoneSurface extends StatelessWidget {
 }
 
 class _AppMark extends StatelessWidget {
-  const _AppMark({required this.size});
+  const new({required this.size});
 
   final double size;
 
@@ -1464,7 +1532,7 @@ class _AppMark extends StatelessWidget {
 }
 
 class _MicrosoftMark extends StatelessWidget {
-  const _MicrosoftMark();
+  const new();
 
   @override
   Widget build(BuildContext context) {
@@ -1485,7 +1553,7 @@ class _MicrosoftMark extends StatelessWidget {
 }
 
 class _MsTile extends StatelessWidget {
-  const _MsTile(this.color);
+  const new(this.color);
 
   final Color color;
 
@@ -1574,7 +1642,8 @@ Color _accentFor(int index) {
   return accents[index % accents.length];
 }
 
-DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
 
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;

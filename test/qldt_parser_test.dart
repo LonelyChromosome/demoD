@@ -15,34 +15,31 @@ void main() {
   });
 
   test('separates study schedule and exam schedule using PHANLOAI', () {
-    final parsed = parser.parseApiResponse(
-      <String, dynamic>{
-        'Success': true,
-        'Data': <Map<String, dynamic>>[
-          <String, dynamic>{
-            'PHANLOAI': 'LICHHOC',
-            'NGAYHOC': '26/08/2026',
-            'TENHOCPHAN': 'Thiết kế web nâng cao',
-            'PHONGHOC_TEN': 'A6-101',
-            'GIOBATDAU': 6,
-            'PHUTBATDAU': 45,
-            'GIOKETTHUC': 9,
-            'PHUTKETTHUC': 25,
-          },
-          <String, dynamic>{
-            'PHANLOAI': 'LICHTHI',
-            'NGAYHOC': '26/08/2026',
-            'TENHOCPHAN': 'Lập trình C++',
-            'PHONGTHI': 'A6-201',
-            'GIOBATDAU': 7,
-            'PHUTBATDAU': 30,
-            'GIOKETTHUC': 9,
-            'PHUTKETTHUC': 0,
-          },
-        ],
-      },
-      displayName: 'Nguyễn Minh Đạo',
-    );
+    final parsed = parser.parseApiResponse(<String, dynamic>{
+      'Success': true,
+      'Data': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'PHANLOAI': 'LICHHOC',
+          'NGAYHOC': '26/08/2026',
+          'TENHOCPHAN': 'Thiết kế web nâng cao',
+          'PHONGHOC_TEN': 'A6-101',
+          'GIOBATDAU': 6,
+          'PHUTBATDAU': 45,
+          'GIOKETTHUC': 9,
+          'PHUTKETTHUC': 25,
+        },
+        <String, dynamic>{
+          'PHANLOAI': 'LICHTHI',
+          'NGAYHOC': '26/08/2026',
+          'TENHOCPHAN': 'Lập trình C++',
+          'PHONGTHI': 'A6-201',
+          'GIOBATDAU': 7,
+          'PHUTBATDAU': 30,
+          'GIOKETTHUC': 9,
+          'PHUTKETTHUC': 0,
+        },
+      ],
+    }, displayName: 'Nguyễn Minh Đạo');
 
     expect(parsed.displayName, 'Nguyễn Minh Đạo');
     expect(parsed.classes, hasLength(1));

@@ -1,6 +1,5 @@
+import 'package:better_phenikaa_schedule/features/qldt_intake/qldt_models.dart';
 import 'package:flutter/widgets.dart';
-
-import 'qldt_models.dart';
 
 const bool supportsLiveQldtLogin = false;
 

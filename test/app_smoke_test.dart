@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('app boots into the login flow and opens the demo', (tester) async {
+  testWidgets('app boots into the login flow and opens the demo', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
 
     await tester.pumpWidget(

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:html/parser.dart' as html_parser;
 
 final class ScheduleRecord {
-  const ScheduleRecord({
+  const new({
     required this.id,
     required this.isExam,
     required this.subjectName,
@@ -16,31 +16,7 @@ final class ScheduleRecord {
     this.periodEnd,
   });
 
-  final String id;
-  final bool isExam;
-  final String subjectName;
-  final String room;
-  final DateTime startAt;
-  final DateTime endAt;
-  final String className;
-  final String examForm;
-  final int? periodStart;
-  final int? periodEnd;
-
-  Map<String, Object?> toJson() => <String, Object?>{
-        'id': id,
-        'isExam': isExam,
-        'subjectName': subjectName,
-        'room': room,
-        'startAt': startAt.toIso8601String(),
-        'endAt': endAt.toIso8601String(),
-        'className': className,
-        'examForm': examForm,
-        'periodStart': periodStart,
-        'periodEnd': periodEnd,
-      };
-
-  factory ScheduleRecord.fromJson(Map<String, Object?> json) {
+  factory fromJson(Map<String, Object?> json) {
     return ScheduleRecord(
       id: json['id']! as String,
       isExam: json['isExam']! as bool,
@@ -54,37 +30,41 @@ final class ScheduleRecord {
       periodEnd: json['periodEnd'] as int?,
     );
   }
+
+  final String id;
+  final bool isExam;
+  final String subjectName;
+  final String room;
+  final DateTime startAt;
+  final DateTime endAt;
+  final String className;
+  final String examForm;
+  final int? periodStart;
+  final int? periodEnd;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'id': id,
+    'isExam': isExam,
+    'subjectName': subjectName,
+    'room': room,
+    'startAt': startAt.toIso8601String(),
+    'endAt': endAt.toIso8601String(),
+    'className': className,
+    'examForm': examForm,
+    'periodStart': periodStart,
+    'periodEnd': periodEnd,
+  };
 }
 
 final class ImportedScheduleData {
-  const ImportedScheduleData({
+  const new({
     required this.displayName,
     required this.records,
     required this.syncedAt,
     this.source = 'qldt',
   });
 
-  final String displayName;
-  final List<ScheduleRecord> records;
-  final DateTime syncedAt;
-  final String source;
-
-  List<ScheduleRecord> get classes =>
-      records.where((record) => !record.isExam).toList(growable: false);
-
-  List<ScheduleRecord> get exams =>
-      records.where((record) => record.isExam).toList(growable: false);
-
-  Map<String, Object?> toJson() => <String, Object?>{
-        'displayName': displayName,
-        'records': records.map((record) => record.toJson()).toList(),
-        'syncedAt': syncedAt.toIso8601String(),
-        'source': source,
-      };
-
-  String encode() => jsonEncode(toJson());
-
-  factory ImportedScheduleData.decode(String source) {
+  factory decode(String source) {
     final raw = jsonDecode(source) as Map<String, dynamic>;
     final recordsRaw = raw['records'] as List<dynamic>? ?? const <dynamic>[];
     return ImportedScheduleData(
@@ -100,10 +80,30 @@ final class ImportedScheduleData {
       source: raw['source'] as String? ?? 'qldt',
     );
   }
+
+  final String displayName;
+  final List<ScheduleRecord> records;
+  final DateTime syncedAt;
+  final String source;
+
+  List<ScheduleRecord> get classes =>
+      records.where((record) => !record.isExam).toList(growable: false);
+
+  List<ScheduleRecord> get exams =>
+      records.where((record) => record.isExam).toList(growable: false);
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'displayName': displayName,
+    'records': records.map((record) => record.toJson()).toList(),
+    'syncedAt': syncedAt.toIso8601String(),
+    'source': source,
+  };
+
+  String encode() => jsonEncode(toJson());
 }
 
 final class QldtParser {
-  const QldtParser();
+  const new();
 
   String parseDisplayName(String html) {
     final document = html_parser.parse(html);
@@ -113,7 +113,9 @@ final class QldtParser {
       return preferredText;
     }
 
-    final accountSpans = document.querySelectorAll('.nav-account button > span');
+    final accountSpans = document.querySelectorAll(
+      '.nav-account button > span',
+    );
     for (final span in accountSpans) {
       final text = span.text.trim();
       if (text.isNotEmpty) {
@@ -197,10 +199,16 @@ final class QldtParser {
         : _firstNonEmpty(<Object?>[item['PHONGHOC_TEN'], item['TENPHONGHOC']]);
     final className = _string(item['TENLOPHOCPHAN']);
     final examForm = _string(item['DANGKY_LOPHOCPHAN_TEN']);
-    final startAt = DateTime(day.year, day.month, day.day, startHour, startMinute);
+    final startAt = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      startHour,
+      startMinute,
+    );
     final endAt = DateTime(day.year, day.month, day.day, endHour, endMinute);
     final id = <String>[
-      isExam ? 'exam' : 'class',
+      if (isExam) 'exam' else 'class',
       dateText,
       subjectName,
       '$startHour:$startMinute',

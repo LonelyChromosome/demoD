@@ -1,7 +1,6 @@
+import 'package:better_phenikaa_schedule/features/qldt_intake/qldt_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-
-import 'qldt_models.dart';
 
 const bool supportsLiveQldtLogin = true;
 
@@ -15,7 +14,7 @@ Future<ImportedScheduleData?> openQldtLogin(BuildContext context) {
 }
 
 class _QldtWebLoginScreen extends StatefulWidget {
-  const _QldtWebLoginScreen();
+  const new();
 
   @override
   State<_QldtWebLoginScreen> createState() => _QldtWebLoginScreenState();
@@ -72,14 +71,10 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
             child: InAppWebView(
               initialUrlRequest: URLRequest(url: _qldtUri),
               initialSettings: InAppWebViewSettings(
-                javaScriptEnabled: true,
-                thirdPartyCookiesEnabled: true,
-                domStorageEnabled: true,
-                cacheEnabled: true,
                 useShouldOverrideUrlLoading: false,
               ),
               onWebViewCreated: _onWebViewCreated,
-              onLoadStop: (_, __) => _checkReady(),
+              onLoadStop: (_, _) => _checkReady(),
             ),
           ),
           SafeArea(
@@ -201,7 +196,8 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
     final startText = _formatDate(start);
     final endText = _formatDate(end);
 
-    final script = '''
+    final script =
+        '''
       (function () {
         try {
           if (!(window.edu && edu.system && edu.system.userId &&
