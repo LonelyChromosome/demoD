@@ -652,8 +652,7 @@ class _TimetableScreen extends StatelessWidget {
                       ? const _EmptyState(
                           icon: Icons.event_available_outlined,
                           title: 'Không có lịch học',
-                          message:
-                              'Vuốt sang ngày khác, bấm ngày hoặc biểu tượng lịch để chọn nhanh.',
+                          message: 'Vuốt sang ngày khác, bấm ngày hoặc biểu tượng lịch để chọn nhanh.',
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.only(bottom: 82),
@@ -875,10 +874,7 @@ class _TopTitle extends StatelessWidget {
         ],
         const Spacer(),
         if (onCalendarTap == null)
-          const Icon(
-            Icons.calendar_month_outlined,
-            color: Color(0xFF1747B5),
-          )
+          const Icon(Icons.calendar_month_outlined, color: Color(0xFF1747B5))
         else
           IconButton.filledTonal(
             tooltip: 'Chọn ngày',
@@ -960,7 +956,7 @@ Future<void> _showCalendarPicker(
   DateTime selectedDate,
   ValueChanged<DateTime> onDateChanged,
 ) async {
-  DateTime draft = _dateOnly(selectedDate);
+  var draft = _dateOnly(selectedDate);
   final picked = await showModalBottomSheet<DateTime>(
     context: context,
     isScrollControlled: true,
