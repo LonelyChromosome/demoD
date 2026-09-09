@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Better Phenikaa Web Bridge - QLDT Beta",
-  "version": "0.3.0",
-  "description": "Automatic local bridge between Better Phenikaa App and an authenticated Phenikaa QLDT beta tab.",
+  "version": "1.0.0",
+  "description": "Local bridge between Better Phenikaa App and an authenticated Phenikaa QLDT beta tab.",
   "permissions": ["tabs", "scripting", "storage"],
   "host_permissions": [
     "https://qldtbeta.phenikaa-uni.edu.vn/*",
@@ -22,7 +22,7 @@
         "http://localhost/*",
         "http://127.0.0.1/*"
       ],
-      "js": ["demo_bridge.js"],
+      "js": ["app_bridge.js"],
       "run_at": "document_start"
     }
   ],
