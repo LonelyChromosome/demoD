@@ -2,18 +2,26 @@
   "manifest_version": 3,
   "name": "Better Phenikaa Web Bridge",
   "version": "0.1.0",
-  "description": "Local bridge between the Better Phenikaa GitHub Pages demo and an authenticated Phenikaa QLDT tab.",
+  "description": "Local bridge between Better Phenikaa web previews and an authenticated Phenikaa QLDT tab.",
   "permissions": ["tabs", "scripting"],
   "host_permissions": [
     "https://qldt.phenikaa-uni.edu.vn/*",
-    "https://lonelychromosome.github.io/demoD/*"
+    "https://lonelychromosome.github.io/demoD/*",
+    "https://*.app.github.dev/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://lonelychromosome.github.io/demoD/*"],
+      "matches": [
+        "https://lonelychromosome.github.io/demoD/*",
+        "https://*.app.github.dev/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
       "js": ["demo_bridge.js"],
       "run_at": "document_start"
     }
