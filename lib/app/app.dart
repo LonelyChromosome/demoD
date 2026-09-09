@@ -544,8 +544,8 @@ class _MainShell extends StatelessWidget {
             ),
           if (panelOpen)
             Positioned(
-              right: 24,
-              bottom: 106,
+              right: 10,
+              bottom: 78,
               child: _ControlPanel(
                 page: page,
                 onOpenPage: onOpenPage,
@@ -561,7 +561,18 @@ class _MainShell extends StatelessWidget {
               backgroundColor: const Color(0xFF1647B6),
               foregroundColor: Colors.white,
               elevation: 8,
-              child: Icon(panelOpen ? Icons.close : Icons.grid_view_rounded),
+              child: AnimatedRotation(
+                turns: panelOpen ? .125 : 0,
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: Icon(
+                    panelOpen ? Icons.close : Icons.grid_view_rounded,
+                    key: ValueKey<bool>(panelOpen),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -604,10 +615,14 @@ class _TimetableScreen extends StatelessWidget {
             _TopTitle(
               title: 'Lịch học',
               badge: data.source == 'demo' ? 'DEMO' : null,
+              onCalendarTap: () =>
+                  _showCalendarPicker(context, selectedDate, onDateChanged),
             ),
             const SizedBox(height: 24),
             _DateNavigator(
               date: selectedDate,
+              onTap: () =>
+                  _showCalendarPicker(context, selectedDate, onDateChanged),
               onPrevious: () =>
                   onDateChanged(selectedDate.subtract(const Duration(days: 1))),
               onNext: () =>
@@ -615,21 +630,43 @@ class _TimetableScreen extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Expanded(
-              child: items.isEmpty
-                  ? const _EmptyState(
-                      icon: Icons.event_available_outlined,
-                      title: 'Không có lịch học',
-                      message: 'Vuốt sang ngày khác hoặc dùng nút mũi tên để xem lịch.',
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 82),
-                      itemCount: items.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) => _ScheduleCard(
-                        item: items[index],
-                        accent: _accentFor(index),
-                      ),
-                    ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  final slide = Tween<Offset>(
+                    begin: const Offset(.14, 0),
+                    end: Offset.zero,
+                  ).animate(animation);
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(position: slide, child: child),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey<String>(
+                    '${selectedDate.year}-${selectedDate.month}-${selectedDate.day}',
+                  ),
+                  child: items.isEmpty
+                      ? const _EmptyState(
+                          icon: Icons.event_available_outlined,
+                          title: 'Không có lịch học',
+                          message:
+                              'Vuốt sang ngày khác, bấm ngày hoặc biểu tượng lịch để chọn nhanh.',
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.only(bottom: 82),
+                          itemCount: items.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 14),
+                          itemBuilder: (context, index) => _ScheduleCard(
+                            item: items[index],
+                            accent: _accentFor(index),
+                          ),
+                        ),
+                ),
+              ),
             ),
           ],
         ),
@@ -800,10 +837,11 @@ class _AccountScreen extends StatelessWidget {
 }
 
 class _TopTitle extends StatelessWidget {
-  const new({required this.title, this.badge});
+  const new({required this.title, this.badge, this.onCalendarTap});
 
   final String title;
   final String? badge;
+  final VoidCallback? onCalendarTap;
 
   @override
   Widget build(BuildContext context) {
@@ -836,7 +874,21 @@ class _TopTitle extends StatelessWidget {
           ),
         ],
         const Spacer(),
-        const Icon(Icons.calendar_month_outlined, color: Color(0xFF1747B5)),
+        if (onCalendarTap == null)
+          const Icon(
+            Icons.calendar_month_outlined,
+            color: Color(0xFF1747B5),
+          )
+        else
+          IconButton.filledTonal(
+            tooltip: 'Chọn ngày',
+            onPressed: onCalendarTap,
+            style: IconButton.styleFrom(
+              foregroundColor: const Color(0xFF1747B5),
+              backgroundColor: const Color(0xFFEEF4FF),
+            ),
+            icon: const Icon(Icons.calendar_month_outlined),
+          ),
       ],
     );
   }
@@ -845,11 +897,13 @@ class _TopTitle extends StatelessWidget {
 class _DateNavigator extends StatelessWidget {
   const new({
     required this.date,
+    required this.onTap,
     required this.onPrevious,
     required this.onNext,
   });
 
   final DateTime date;
+  final VoidCallback onTap;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
 
@@ -862,12 +916,33 @@ class _DateNavigator extends StatelessWidget {
           icon: const Icon(Icons.chevron_left_rounded),
         ),
         Expanded(
-          child: Text(
-            _dateLabel(date),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF17367E),
-              fontWeight: FontWeight.w700,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Flexible(
+                    child: Text(
+                      _dateLabel(date),
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFF17367E),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  const Icon(
+                    Icons.expand_more_rounded,
+                    size: 18,
+                    color: Color(0xFF5D74A7),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -877,6 +952,118 @@ class _DateNavigator extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+Future<void> _showCalendarPicker(
+  BuildContext context,
+  DateTime selectedDate,
+  ValueChanged<DateTime> onDateChanged,
+) async {
+  DateTime draft = _dateOnly(selectedDate);
+  final picked = await showModalBottomSheet<DateTime>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: false,
+    backgroundColor: Colors.transparent,
+    barrierColor: const Color(0x660B2259),
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: .94, end: 1),
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutBack,
+            builder: (context, value, child) => Transform.scale(
+              alignment: Alignment.bottomCenter,
+              scale: value,
+              child: child,
+            ),
+            child: SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x2510245A),
+                      blurRadius: 28,
+                      offset: Offset(0, -6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      width: 42,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD7DFEE),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                    Row(
+                      children: <Widget>[
+                        const Expanded(
+                          child: Text(
+                            'Chọn ngày xem lịch',
+                            style: TextStyle(
+                              color: Color(0xFF102B73),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => setModalState(
+                            () => draft = _dateOnly(DateTime.now()),
+                          ),
+                          child: const Text('Hôm nay'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: Theme.of(context).colorScheme.copyWith(
+                          primary: const Color(0xFF1747B5),
+                          onPrimary: Colors.white,
+                          surface: Colors.white,
+                        ),
+                      ),
+                      child: CalendarDatePicker(
+                        initialDate: draft,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2035, 12, 31),
+                        onDateChanged: (value) =>
+                            setModalState(() => draft = _dateOnly(value)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.of(context).pop(draft),
+                        icon: const Icon(Icons.check_rounded),
+                        label: Text('Xem ${_dateLabel(draft)}'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+  if (picked != null) {
+    onDateChanged(_dateOnly(picked));
   }
 }
 
@@ -1291,41 +1478,119 @@ class _ControlPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: <Widget>[
-        _PanelAction(
-          label: 'Lịch học',
-          icon: Icons.event_available_rounded,
-          color: const Color(0xFF4A89FF),
-          selected: page == _AppPage.timetable,
-          onTap: () => onOpenPage(_AppPage.timetable),
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      builder: (context, progress, child) {
+        return SizedBox(
+          width: 286,
+          height: 292,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              _ArcPanelAction(
+                progress: progress,
+                start: 0,
+                right: 4,
+                bottom: 205,
+                originOffset: const Offset(20, 78),
+                child: _PanelAction(
+                  label: 'Lịch học',
+                  icon: Icons.event_available_rounded,
+                  color: const Color(0xFF4A89FF),
+                  selected: page == _AppPage.timetable,
+                  onTap: () => onOpenPage(_AppPage.timetable),
+                ),
+              ),
+              _ArcPanelAction(
+                progress: progress,
+                start: .10,
+                right: 48,
+                bottom: 148,
+                originOffset: const Offset(34, 62),
+                child: _PanelAction(
+                  label: 'Lịch thi',
+                  icon: Icons.assignment_rounded,
+                  color: const Color(0xFF32C489),
+                  selected: page == _AppPage.exam,
+                  onTap: () => onOpenPage(_AppPage.exam),
+                ),
+              ),
+              _ArcPanelAction(
+                progress: progress,
+                start: .20,
+                right: 82,
+                bottom: 84,
+                originOffset: const Offset(46, 46),
+                child: _PanelAction(
+                  label: 'Đồng bộ',
+                  icon: Icons.sync_rounded,
+                  color: const Color(0xFFFFA51E),
+                  selected: false,
+                  onTap: onSync,
+                ),
+              ),
+              _ArcPanelAction(
+                progress: progress,
+                start: .30,
+                right: 96,
+                bottom: 16,
+                originOffset: const Offset(54, 26),
+                child: _PanelAction(
+                  label: 'Tài khoản',
+                  icon: Icons.person_rounded,
+                  color: const Color(0xFF8154D9),
+                  selected: page == _AppPage.account,
+                  onTap: () => onOpenPage(_AppPage.account),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ArcPanelAction extends StatelessWidget {
+  const new({
+    required this.progress,
+    required this.start,
+    required this.right,
+    required this.bottom,
+    required this.originOffset,
+    required this.child,
+  });
+
+  final double progress;
+  final double start;
+  final double right;
+  final double bottom;
+  final Offset originOffset;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ((progress - start) / (1 - start)).clamp(0.0, 1.0);
+    final curved = Curves.easeOutBack.transform(t);
+    return Positioned(
+      right: right,
+      bottom: bottom,
+      child: IgnorePointer(
+        ignoring: t < .55,
+        child: Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset.lerp(originOffset, Offset.zero, curved)!,
+            child: Transform.scale(
+              alignment: Alignment.centerRight,
+              scale: .72 + (.28 * curved),
+              child: child,
+            ),
+          ),
         ),
-        const SizedBox(height: 10),
-        _PanelAction(
-          label: 'Lịch thi',
-          icon: Icons.assignment_rounded,
-          color: const Color(0xFF32C489),
-          selected: page == _AppPage.exam,
-          onTap: () => onOpenPage(_AppPage.exam),
-        ),
-        const SizedBox(height: 10),
-        _PanelAction(
-          label: 'Đồng bộ',
-          icon: Icons.sync_rounded,
-          color: const Color(0xFFFFA51E),
-          selected: false,
-          onTap: onSync,
-        ),
-        const SizedBox(height: 10),
-        _PanelAction(
-          label: 'Tài khoản',
-          icon: Icons.person_rounded,
-          color: const Color(0xFF8154D9),
-          selected: page == _AppPage.account,
-          onTap: () => onOpenPage(_AppPage.account),
-        ),
-      ],
+      ),
     );
   }
 }
