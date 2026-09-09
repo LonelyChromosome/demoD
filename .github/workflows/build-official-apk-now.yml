@@ -1,4 +1,4 @@
-name: Build Better Phenikaa App v1.0.2
+name: Build Better Phenikaa App v1.0.3
 
 on:
   push:
@@ -56,7 +56,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '^version: 1.0.2+3$' pubspec.yaml
+          grep -q '^version: 1.0.3+4$' pubspec.yaml
           grep -q 'android:label="Better Phenikaa App"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:icon="@drawable/ic_launcher_better_phenikaa"' android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
@@ -65,6 +65,9 @@ jobs:
           grep -q 'qldtbeta.phenikaa-uni.edu.vn' lib/features/qldt_intake/qldt_login_mobile.dart
           grep -q '<StackView' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
           grep -q 'android:rotation="90"' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
+          grep -q 'android:layout_width="88dp"' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
+          grep -q 'android:layout_height="320dp"' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
+          grep -q 'LinearGradient' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetService.kt
           grep -q 'ScheduleWidgetService' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
           grep -q 'RemoteViewsService' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetService.kt
           grep -q 'setPendingIntentTemplate' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
@@ -86,17 +89,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/Better_Phenikaa_App_v1.0.2.apk
-          sha256sum dist/Better_Phenikaa_App_v1.0.2.apk > dist/Better_Phenikaa_App_v1.0.2.sha256
-          test -s dist/Better_Phenikaa_App_v1.0.2.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dist/Better_Phenikaa_App_v1.0.3.apk
+          sha256sum dist/Better_Phenikaa_App_v1.0.3.apk > dist/Better_Phenikaa_App_v1.0.3.sha256
+          test -s dist/Better_Phenikaa_App_v1.0.3.apk
           ls -lh dist
 
       - name: Upload Better Phenikaa App
         uses: actions/upload-artifact@v4
         with:
-          name: Better-Phenikaa-App-v1.0.2
+          name: Better-Phenikaa-App-v1.0.3
           path: |
-            dist/Better_Phenikaa_App_v1.0.2.apk
-            dist/Better_Phenikaa_App_v1.0.2.sha256
+            dist/Better_Phenikaa_App_v1.0.3.apk
+            dist/Better_Phenikaa_App_v1.0.3.sha256
           retention-days: 30
           if-no-files-found: error
