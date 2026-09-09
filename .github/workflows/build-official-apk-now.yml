@@ -63,9 +63,10 @@ jobs:
           grep -q 'compileSdk = 37' android/app/build.gradle.kts
           grep -q 'com.android.application") version "9.1.1"' android/settings.gradle.kts
           grep -q 'qldtbeta.phenikaa-uni.edu.vn' lib/features/qldt_intake/qldt_login_mobile.dart
-          grep -q '<ListView' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
+          grep -q '<StackView' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
           grep -q 'android:id="@+id/widget_list"' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
           grep -q 'android:rotation="90"' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
+          grep -q 'android:loopViews="true"' platform/android_widget/app/src/main/res/layout/schedule_widget.xml
           grep -q 'setViewLayoutWidth' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
           grep -q 'setViewLayoutHeight' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
           grep -q 'R.id.widget_list' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
@@ -75,8 +76,8 @@ jobs:
           grep -q 'RemoteViewsService' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetService.kt
           grep -q 'setPendingIntentTemplate' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
           grep -q 'android:updatePeriodMillis="0"' platform/android_widget/app/src/main/res/xml/schedule_widget_info.xml
-          if grep -RniE '<StackView|widget_stack|widget_previous|widget_next|WIDGET_PREVIOUS|WIDGET_NEXT' platform/android_widget; then
-            echo 'Legacy stacked/arrow navigation still exists in the widget.' >&2
+          if grep -RniE '<ListView|widget_previous|widget_next|WIDGET_PREVIOUS|WIDGET_NEXT' platform/android_widget; then
+            echo 'Legacy list/arrow navigation still exists in the widget.' >&2
             exit 1
           fi
           if grep -RniE '\bdemo\b|mockup' lib --include='*.dart'; then
