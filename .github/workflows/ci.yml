@@ -39,6 +39,9 @@ jobs:
       - name: Bootstrap project
         run: bash tool/bootstrap.sh
 
+      - name: Apply safe Dart fixes
+        run: dart fix --apply
+
       - name: Format sources
         run: dart format lib test
 
