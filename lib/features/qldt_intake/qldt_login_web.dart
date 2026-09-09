@@ -1,3 +1,5 @@
+// This file is selected only for Flutter Web and must talk to the local Chrome
+// bridge through browser DOM events; the mobile implementation never imports it.
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 
 import 'dart:convert';
