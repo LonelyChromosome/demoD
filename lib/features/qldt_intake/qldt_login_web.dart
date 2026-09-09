@@ -17,7 +17,7 @@ Future<ImportedScheduleData?> openQldtLogin(BuildContext context) {
 }
 
 class _WebQldtBridgeDialog extends StatefulWidget {
-  const _WebQldtBridgeDialog();
+  const new();
 
   @override
   State<_WebQldtBridgeDialog> createState() => _WebQldtBridgeDialogState();
@@ -49,21 +49,16 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
   }
 
   void _openQldt() {
-    html.window.open(
-      'https://qldt.phenikaa-uni.edu.vn/',
-      'betterPhenikaaQldt',
-    );
+    html.window.open('https://qldt.phenikaa-uni.edu.vn/', 'betterPhenikaaQldt');
     setState(() {
-      _status =
-          'Đăng nhập Microsoft trên tab QLĐT chính thức. Giữ tab đó mở rồi quay lại đây.';
+      _status = 'Đăng nhập Microsoft trên tab QLĐT chính thức. Giữ tab đó mở rồi quay lại đây.';
     });
   }
 
   void _requestSync() {
     if (!_bridgeReady) {
       setState(() {
-        _status =
-            'Chưa phát hiện Better Phenikaa Web Bridge. Hãy bật tiện ích cầu nối rồi tải lại trang.';
+        _status = 'Chưa phát hiện Better Phenikaa Web Bridge. Hãy bật tiện ích cầu nối rồi tải lại trang.';
       });
       return;
     }
@@ -81,9 +76,7 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
       _syncing = true;
       _status = 'Đang đọc lịch từ tab QLĐT đã đăng nhập...';
     });
-    html.window.dispatchEvent(
-      html.CustomEvent(_requestEvent, detail: payload),
-    );
+    html.window.dispatchEvent(html.CustomEvent(_requestEvent, detail: payload));
   }
 
   void _onResult(html.Event event) {
@@ -175,9 +168,7 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      bridgeReady
-                          ? 'Better Phenikaa Web Bridge: đã bật'
-                          : 'Chưa phát hiện Web Bridge. Nạp thư mục tools/web_qldt_bridge dưới dạng Chrome extension rồi tải lại trang.',
+                      bridgeReady ? 'Better Phenikaa Web Bridge: đã bật' : 'Chưa phát hiện Web Bridge. Nạp thư mục tools/web_qldt_bridge dưới dạng Chrome extension rồi tải lại trang.',
                       style: const TextStyle(fontSize: 13, height: 1.35),
                     ),
                   ),
