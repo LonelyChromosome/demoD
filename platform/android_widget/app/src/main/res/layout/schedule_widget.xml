@@ -8,23 +8,21 @@
     android:clipToPadding="true">
 
     <!--
-      StackView displays exactly one active schedule card while retaining its
-      native flick gesture. Rotating the collection by 90 degrees maps that
-      gesture to a physical left/right swipe on the launcher. The provider
-      swaps the measured width/height at runtime so this touch surface covers
-      the whole visible widget instead of only a narrow strip.
+      Use StackView in its native vertical direction. A rotated StackView makes a
+      horizontal gesture compete with the launcher's home-screen page gesture.
+      Native vertical swiping keeps collection gestures inside the widget while
+      preserving the same stacked-card behaviour and data source.
     -->
     <StackView
         android:id="@+id/widget_list"
-        android:layout_width="88dp"
-        android:layout_height="320dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_gravity="center"
         android:animateFirstView="false"
         android:clickable="true"
         android:clipChildren="true"
         android:clipToPadding="true"
-        android:loopViews="true"
-        android:rotation="90" />
+        android:loopViews="true" />
 
     <TextView
         android:id="@+id/widget_empty"
