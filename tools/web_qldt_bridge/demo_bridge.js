@@ -3,8 +3,18 @@
   const RESULT_EVENT = 'better-phenikaa-qldt-result';
   const ERROR_EVENT = 'better-phenikaa-qldt-error';
 
-  document.documentElement.dataset.betterPhenikaaBridge = 'ready';
-  window.dispatchEvent(new CustomEvent('better-phenikaa-bridge-ready'));
+  const markReady = () => {
+    if (!document.documentElement) {
+      return false;
+    }
+    document.documentElement.dataset.betterPhenikaaBridge = 'ready';
+    window.dispatchEvent(new CustomEvent('better-phenikaa-bridge-ready'));
+    return true;
+  };
+
+  if (!markReady()) {
+    document.addEventListener('DOMContentLoaded', markReady, { once: true });
+  }
 
   window.addEventListener(REQUEST_EVENT, async (event) => {
     let payload = {};
