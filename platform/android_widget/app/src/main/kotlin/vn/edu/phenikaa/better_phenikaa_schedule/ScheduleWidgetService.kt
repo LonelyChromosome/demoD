@@ -263,7 +263,9 @@ private fun readWidgetClasses(context: Context, widgetId: Int): List<WidgetClass
         // Index zero is the selected date (today by default). Future dates follow in
         // ascending order. Older dates are also ascending, so the final item is the
         // day immediately before the selected date. With loopViews enabled, swiping
-        // backwards from 09/09 therefore reaches 08/09 instead of jumping to 27/08.
+        // backwards from the selected day therefore reaches the previous day.
+        // Keep the complete collection: truncating this list used to remove the most
+        // recent past dates because they intentionally sit at the end for loop order.
         val ordered = allItems.sortedWith(
             Comparator { a, b ->
                 val aGroup = dateGroup(a.dateKey, selectedDate)
@@ -296,7 +298,7 @@ private fun readWidgetClasses(context: Context, widgetId: Int): List<WidgetClass
         )
 
         val selectedHasSchedule = ordered.any { it.dateKey == selectedDate }
-        val result = ArrayList<WidgetClass>(MAX_WIDGET_ITEMS)
+        val result = ArrayList<WidgetClass>(ordered.size + if (selectedHasSchedule) 0 else 1)
         if (!selectedHasSchedule) {
             val displayDate = "${selectedDate.substring(8, 10)}/${selectedDate.substring(5, 7)}"
             result.add(
@@ -311,7 +313,7 @@ private fun readWidgetClasses(context: Context, widgetId: Int): List<WidgetClass
                 ),
             )
         }
-        result.addAll(ordered.take(MAX_WIDGET_ITEMS - result.size))
+        result.addAll(ordered)
         result
     } catch (_: Exception) {
         emptyList()
@@ -349,7 +351,6 @@ private const val SNAPSHOT_PREFS = "FlutterSharedPreferences"
 private const val SNAPSHOT_KEY = "flutter.better_phenikaa_snapshot_v1"
 private const val DATE_PATTERN = "yyyy-MM-dd"
 private const val DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss"
-private const val MAX_WIDGET_ITEMS = 80
 private const val DEFAULT_WIDGET_WIDTH_DP = 250
 private const val DEFAULT_WIDGET_HEIGHT_DP = 64
 private const val MIN_RENDER_WIDTH_DP = 220
