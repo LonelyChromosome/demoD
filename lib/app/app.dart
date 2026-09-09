@@ -687,9 +687,7 @@ class _ExamScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final referenceNow = data.source == 'demo'
-        ? DateTime(2026, 8, 26, 6)
-        : DateTime.now();
+    final referenceNow = DateTime.now();
     final exams = data.exams
         .where((record) {
           return showPast
@@ -823,9 +821,7 @@ class _AccountScreen extends StatelessWidget {
     if (data.classes.isEmpty) {
       return null;
     }
-    final reference = data.source == 'demo'
-        ? DateTime(2026, 8, 26, 6)
-        : DateTime.now();
+    final reference = DateTime.now();
     final items =
         data.classes
             .where((record) => !record.endAt.isBefore(reference))
