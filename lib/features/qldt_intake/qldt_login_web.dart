@@ -51,7 +51,7 @@ class _WebQldtBridgeDialogState extends State<_WebQldtBridgeDialog> {
   }
 
   void _openQldt() {
-    html.window.open('https://qldt.phenikaa-uni.edu.vn/', 'betterPhenikaaQldt');
+    html.window.open('https://qldtbeta.phenikaa-uni.edu.vn/', 'betterPhenikaaQldt');
     setState(() {
       _status = 'Đăng nhập Microsoft trên tab QLĐT chính thức. Giữ tab đó mở rồi quay lại đây.';
     });

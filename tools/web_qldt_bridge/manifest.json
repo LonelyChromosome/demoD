@@ -5,7 +5,7 @@
   "description": "Local bridge between Better Phenikaa web previews and an authenticated Phenikaa QLDT tab.",
   "permissions": ["tabs", "scripting"],
   "host_permissions": [
-    "https://qldt.phenikaa-uni.edu.vn/*",
+    "https://qldtbeta.phenikaa-uni.edu.vn/*",
     "https://lonelychromosome.github.io/demoD/*",
     "https://*.app.github.dev/*",
     "http://localhost/*",

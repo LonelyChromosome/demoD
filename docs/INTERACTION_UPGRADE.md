@@ -10,4 +10,4 @@ Implemented for the Better Phenikaa App test shell:
 
 ## Web QLĐT constraint
 
-The static GitHub Pages build cannot directly read an authenticated QLĐT session from `qldt.phenikaa-uni.edu.vn` because browser same-origin/CORS and Microsoft SSO cookies are scoped to the official origins. Real Android login continues through the in-app WebView. A real web-login bridge needs either official web OAuth/API support from QLĐT or a trusted companion/extension mechanism; it must not collect or proxy student passwords through an untrusted third party.
+The static GitHub Pages build cannot directly read an authenticated QLĐT session from `qldtbeta.phenikaa-uni.edu.vn` because browser same-origin/CORS and Microsoft SSO cookies are scoped to the official origins. Real Android login continues through the in-app WebView. A real web-login bridge needs either official web OAuth/API support from QLĐT or a trusted companion/extension mechanism; it must not collect or proxy student passwords through an untrusted third party.

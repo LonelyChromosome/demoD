@@ -1,5 +1,5 @@
-const QLDT_PATTERN = 'https://qldt.phenikaa-uni.edu.vn/*';
-const QLDT_HOME = 'https://qldt.phenikaa-uni.edu.vn/';
+const QLDT_PATTERN = 'https://qldtbeta.phenikaa-uni.edu.vn/*';
+const QLDT_HOME = 'https://qldtbeta.phenikaa-uni.edu.vn/';
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || message.type !== 'betterPhenikaaSyncQldt') {
