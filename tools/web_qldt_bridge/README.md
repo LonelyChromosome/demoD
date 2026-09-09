@@ -1,6 +1,6 @@
-# Better Phenikaa Web Bridge - QLDT Beta
+# Better Phenikaa Web Bridge - QLĐT Beta
 
-Chrome extension cục bộ dùng cho **web demo** của Better Phenikaa App để đăng nhập và đọc lịch từ QLĐT beta mà không thu mật khẩu trong app.
+Chrome extension cục bộ dùng cho **Better Phenikaa App trên web** để đăng nhập và đọc lịch từ QLĐT beta mà không thu mật khẩu trong app.
 
 QLĐT sử dụng đúng địa chỉ:
 
