@@ -1,4 +1,4 @@
-name: Build Better Phenikaa App v1.0.0
+name: Build Better Phenikaa App v1.0.1
 
 on:
   push:
@@ -56,13 +56,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '^version: 1.0.0+1$' pubspec.yaml
+          grep -q '^version: 1.0.1+2$' pubspec.yaml
           grep -q 'android:label="Better Phenikaa App"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:icon="@drawable/ic_launcher_better_phenikaa"' android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
           grep -q 'compileSdk = 37' android/app/build.gradle.kts
           grep -q 'com.android.application") version "9.1.1"' android/settings.gradle.kts
           grep -q 'qldtbeta.phenikaa-uni.edu.vn' lib/features/qldt_intake/qldt_login_mobile.dart
+          grep -q 'WIDGET_PREVIOUS' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
+          grep -q 'WIDGET_NEXT' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
+          grep -q 'getLaunchIntentForPackage' platform/android_widget/app/src/main/kotlin/vn/edu/phenikaa/better_phenikaa_schedule/ScheduleWidgetProvider.kt
+          grep -q 'android:updatePeriodMillis="0"' platform/android_widget/app/src/main/res/xml/schedule_widget_info.xml
           if grep -RniE '\bdemo\b|mockup' lib --include='*.dart'; then
             echo 'Production Dart still contains preview-only wording.' >&2
             exit 1
@@ -76,17 +80,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/Better_Phenikaa_App_v1.0.0.apk
-          sha256sum dist/Better_Phenikaa_App_v1.0.0.apk > dist/Better_Phenikaa_App_v1.0.0.sha256
-          test -s dist/Better_Phenikaa_App_v1.0.0.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dist/Better_Phenikaa_App_v1.0.1.apk
+          sha256sum dist/Better_Phenikaa_App_v1.0.1.apk > dist/Better_Phenikaa_App_v1.0.1.sha256
+          test -s dist/Better_Phenikaa_App_v1.0.1.apk
           ls -lh dist
 
       - name: Upload Better Phenikaa App
         uses: actions/upload-artifact@v4
         with:
-          name: Better-Phenikaa-App-v1.0.0
+          name: Better-Phenikaa-App-v1.0.1
           path: |
-            dist/Better_Phenikaa_App_v1.0.0.apk
-            dist/Better_Phenikaa_App_v1.0.0.sha256
+            dist/Better_Phenikaa_App_v1.0.1.apk
+            dist/Better_Phenikaa_App_v1.0.1.sha256
           retention-days: 30
           if-no-files-found: error
