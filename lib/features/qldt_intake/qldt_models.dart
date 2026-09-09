@@ -86,11 +86,10 @@ final class ImportedScheduleData {
   final DateTime syncedAt;
   final String source;
 
-  List<ScheduleRecord> get classes =>
-      records.where((record) => !record.isExam).toList(growable: false);
+  Iterable<ScheduleRecord> get classes =>
+      records.where((record) => !record.isExam);
 
-  List<ScheduleRecord> get exams =>
-      records.where((record) => record.isExam).toList(growable: false);
+  Iterable<ScheduleRecord> get exams => records.where((record) => record.isExam);
 
   Map<String, Object?> toJson() => <String, Object?>{
     'displayName': displayName,
