@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.LinearGradient
-import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
@@ -66,12 +65,12 @@ private class ScheduleWidgetFactory(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             views.setViewLayoutWidth(
                 R.id.widget_slide_item,
-                heightDp.toFloat(),
+                widthDp.toFloat(),
                 TypedValue.COMPLEX_UNIT_DIP,
             )
             views.setViewLayoutHeight(
                 R.id.widget_slide_item,
-                widthDp.toFloat(),
+                heightDp.toFloat(),
                 TypedValue.COMPLEX_UNIT_DIP,
             )
         }
@@ -139,10 +138,8 @@ private class ScheduleWidgetFactory(
         val left = 18f * density
         val right = width - 18f * density
 
-        // Android StackView deliberately leaves a narrow part of the cards behind
-        // the active card visible. Keep every card's readable content out of that
-        // stack-only edge so the home screen can never expose text from neighbours.
-        // The StackView itself and its native swipe behaviour remain unchanged.
+        // Keep the existing content inset so switching gesture direction does not
+        // alter the card's visual spacing or text placement.
         val contentRight = (right - STACK_PEEK_SAFE_INSET_DP * density)
             .coerceAtLeast(left + 120f * density)
 
@@ -190,22 +187,7 @@ private class ScheduleWidgetFactory(
         canvas.drawText(room.toString(), left, height * 0.74f, detailPaint)
         canvas.drawText(item.time, contentRight - timeWidth, height * 0.74f, detailPaint)
 
-        // Parent StackView is +90 degrees. Counter-rotating the card keeps the
-        // content upright while preserving a native horizontal swipe gesture.
-        val matrix = Matrix().apply { postRotate(-90f) }
-        val rotated = Bitmap.createBitmap(
-            horizontal,
-            0,
-            0,
-            horizontal.width,
-            horizontal.height,
-            matrix,
-            true,
-        )
-        if (rotated !== horizontal) {
-            horizontal.recycle()
-        }
-        return rotated
+        return horizontal
     }
 }
 
