@@ -21,7 +21,9 @@ class _QldtWebLoginScreen extends StatefulWidget {
 }
 
 class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
-  static final WebUri _qldtUri = WebUri('https://qldtbeta.phenikaa-uni.edu.vn/');
+  static final WebUri _qldtUri = WebUri(
+    'https://qldtbeta.phenikaa-uni.edu.vn/',
+  );
 
   InAppWebViewController? _controller;
   bool _pageReady = false;
