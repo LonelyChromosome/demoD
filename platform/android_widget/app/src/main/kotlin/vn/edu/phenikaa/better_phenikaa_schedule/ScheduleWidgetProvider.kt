@@ -48,18 +48,17 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
         val views = RemoteViews(context.packageName, R.layout.schedule_widget)
 
-        // StackView only supports vertical flicks. Rotating the collection 90 degrees
-        // turns them into horizontal swipes. Its measured bounds are swapped so the
-        // transformed touch target covers the complete visible widget, not just the
-        // middle strip.
+        // The collection scrolls vertically in its own coordinates and is rotated
+        // by 90 degrees in XML. Swapping its measured width/height makes the
+        // transformed touch surface cover the entire visible widget.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             views.setViewLayoutWidth(
-                R.id.widget_stack,
+                R.id.widget_list,
                 visualHeightDp.toFloat(),
                 TypedValue.COMPLEX_UNIT_DIP,
             )
             views.setViewLayoutHeight(
-                R.id.widget_stack,
+                R.id.widget_list,
                 visualWidthDp.toFloat(),
                 TypedValue.COMPLEX_UNIT_DIP,
             )
@@ -73,8 +72,8 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 "better-phenikaa://widget/$widgetId/${visualWidthDp}x$visualHeightDp",
             )
         }
-        views.setRemoteAdapter(R.id.widget_stack, serviceIntent)
-        views.setEmptyView(R.id.widget_stack, R.id.widget_empty)
+        views.setRemoteAdapter(R.id.widget_list, serviceIntent)
+        views.setEmptyView(R.id.widget_list, R.id.widget_empty)
 
         context.packageManager.getLaunchIntentForPackage(context.packageName)?.let { launchIntent ->
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -84,12 +83,12 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
             )
-            views.setPendingIntentTemplate(R.id.widget_stack, openApp)
+            views.setPendingIntentTemplate(R.id.widget_list, openApp)
             views.setOnClickPendingIntent(R.id.widget_empty, openApp)
         }
 
         appWidgetManager.updateAppWidget(widgetId, views)
-        appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_stack)
+        appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list)
     }
 
     companion object {
