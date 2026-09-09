@@ -21,11 +21,23 @@ import java.util.Locale
 
 class ScheduleWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
-        ScheduleWidgetFactory(applicationContext)
+        ScheduleWidgetFactory(
+            applicationContext,
+            intent.getIntExtra(
+                ScheduleWidgetProvider.EXTRA_RENDER_WIDTH_DP,
+                DEFAULT_WIDGET_WIDTH_DP,
+            ),
+            intent.getIntExtra(
+                ScheduleWidgetProvider.EXTRA_RENDER_HEIGHT_DP,
+                DEFAULT_WIDGET_HEIGHT_DP,
+            ),
+        )
 }
 
 private class ScheduleWidgetFactory(
     private val context: Context,
+    private val renderWidthDp: Int,
+    private val renderHeightDp: Int,
 ) : RemoteViewsService.RemoteViewsFactory {
     private var items: List<WidgetClass> = emptyList()
 
@@ -79,26 +91,29 @@ private class ScheduleWidgetFactory(
     ): Bitmap {
         val density = context.resources.displayMetrics.density
         val scaledDensity = context.resources.displayMetrics.scaledDensity
-        val width = (320f * density).toInt().coerceAtLeast(1)
-        val height = (88f * density).toInt().coerceAtLeast(1)
+        val widthDp = renderWidthDp.coerceIn(MIN_RENDER_WIDTH_DP, MAX_RENDER_WIDTH_DP)
+        val heightDp = renderHeightDp.coerceIn(MIN_RENDER_HEIGHT_DP, MAX_RENDER_HEIGHT_DP)
+        val width = (widthDp * density).toInt().coerceAtLeast(1)
+        val height = (heightDp * density).toInt().coerceAtLeast(1)
         val horizontal = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(horizontal)
 
-        // Each StackView card must be visually opaque. Transparent cards expose
-        // the neighbouring stacked views underneath and make all subjects look
-        // superimposed, especially on Samsung launchers.
+        // StackView keeps neighbouring cards behind the active one. The previous
+        // transparent slide bitmap exposed every neighbour's text, which is why
+        // several subjects were drawn on top of each other on the home screen.
+        // Paint the whole active card first so only one slide is readable.
         val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 0f,
                 0f,
                 width.toFloat(),
                 0f,
-                intArrayOf(0xFF1746A2.toInt(), 0xFF3567C8.toInt()),
-                null,
+                0xFF173A8E.toInt(),
+                0xFF315AB5.toInt(),
                 Shader.TileMode.CLAMP,
             )
         }
-        val radius = 22f * density
+        val radius = 18f * density
         canvas.drawRoundRect(
             RectF(0f, 0f, width.toFloat(), height.toFloat()),
             radius,
@@ -106,47 +121,54 @@ private class ScheduleWidgetFactory(
             backgroundPaint,
         )
 
-        val left = 20f * density
-        val right = width - 20f * density
+        val sizeScale = (heightDp / DEFAULT_WIDGET_HEIGHT_DP.toFloat()).coerceIn(0.88f, 1.18f)
+        val left = 18f * density
+        val right = width - 18f * density
         val subjectPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
-            textSize = 15f * scaledDensity
+            textSize = 16f * scaledDensity * sizeScale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val detailPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFDDE8FF.toInt()
-            textSize = 11f * scaledDensity
+            textSize = 11f * scaledDensity * sizeScale
         }
         val counterPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFBFD0F5.toInt()
-            textSize = 9f * scaledDensity
+            textSize = 9f * scaledDensity * sizeScale
             textAlign = Paint.Align.RIGHT
         }
 
         val counter = if (count > 1) "${position + 1}/$count" else ""
-        val counterWidth = if (counter.isEmpty()) 0f else counterPaint.measureText(counter) + 10f * density
+        val counterWidth = if (counter.isEmpty()) {
+            0f
+        } else {
+            counterPaint.measureText(counter) + 8f * density
+        }
         val subject = TextUtils.ellipsize(
             item.subject,
             subjectPaint,
-            (right - left - counterWidth).coerceAtLeast(24f * density),
+            (right - left - counterWidth).coerceAtLeast(20f * density),
             TextUtils.TruncateAt.END,
         )
-        canvas.drawText(subject.toString(), left, 34f * density, subjectPaint)
+        canvas.drawText(subject.toString(), left, height * 0.40f, subjectPaint)
         if (counter.isNotEmpty()) {
-            canvas.drawText(counter, right, 29f * density, counterPaint)
+            canvas.drawText(counter, right, height * 0.31f, counterPaint)
         }
 
         val timeWidth = detailPaint.measureText(item.time)
-        val roomMaxWidth = (right - left - timeWidth - 14f * density).coerceAtLeast(24f * density)
+        val roomMaxWidth = (right - left - timeWidth - 12f * density).coerceAtLeast(20f * density)
         val room = TextUtils.ellipsize(
             item.room,
             detailPaint,
             roomMaxWidth,
             TextUtils.TruncateAt.END,
         )
-        canvas.drawText(room.toString(), left, 61f * density, detailPaint)
-        canvas.drawText(item.time, right - timeWidth, 61f * density, detailPaint)
+        canvas.drawText(room.toString(), left, height * 0.74f, detailPaint)
+        canvas.drawText(item.time, right - timeWidth, height * 0.74f, detailPaint)
 
+        // Parent StackView is +90 degrees. Counter-rotating the card keeps the
+        // content upright while preserving a native horizontal swipe gesture.
         val matrix = Matrix().apply { postRotate(-90f) }
         val rotated = Bitmap.createBitmap(
             horizontal,
@@ -235,3 +257,9 @@ private data class WidgetClass(
 private const val SNAPSHOT_PREFS = "FlutterSharedPreferences"
 private const val SNAPSHOT_KEY = "flutter.better_phenikaa_snapshot_v1"
 private const val MAX_WIDGET_ITEMS = 40
+private const val DEFAULT_WIDGET_WIDTH_DP = 250
+private const val DEFAULT_WIDGET_HEIGHT_DP = 64
+private const val MIN_RENDER_WIDTH_DP = 220
+private const val MAX_RENDER_WIDTH_DP = 420
+private const val MIN_RENDER_HEIGHT_DP = 56
+private const val MAX_RENDER_HEIGHT_DP = 110
