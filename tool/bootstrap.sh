@@ -43,6 +43,63 @@ if [[ "${needs_android}" == true || "${needs_web}" == true ]]; then
   fi
 fi
 
+# Better Phenikaa App compiles against Android API 37 because current
+# flutter_secure_storage requires API 37 AAR metadata. AGP 9.1.1 supports
+# API 37 while keeping the template's Gradle/JDK line intact.
+if [[ -d android ]]; then
+  python3 - <<'PY'
+from pathlib import Path
+import re
+
+settings = Path('android/settings.gradle.kts')
+if settings.exists():
+    text = settings.read_text()
+    text = re.sub(
+        r'id\("com\.android\.application"\) version "[^"]+" apply false',
+        'id("com.android.application") version "9.1.1" apply false',
+        text,
+        count=1,
+    )
+    settings.write_text(text)
+
+app_kts = Path('android/app/build.gradle.kts')
+if app_kts.exists():
+    text = app_kts.read_text()
+    text = re.sub(
+        r'compileSdk\s*=\s*[^\n]+',
+        'compileSdk = 37',
+        text,
+        count=1,
+    )
+    app_kts.write_text(text)
+
+app_groovy = Path('android/app/build.gradle')
+if app_groovy.exists():
+    text = app_groovy.read_text()
+    text = re.sub(
+        r'compileSdk(?:Version)?\s+[^\n]+',
+        'compileSdk 37',
+        text,
+        count=1,
+    )
+    app_groovy.write_text(text)
+PY
+
+  sdkmanager_bin=""
+  if command -v sdkmanager >/dev/null 2>&1; then
+    sdkmanager_bin="$(command -v sdkmanager)"
+  elif [[ -n "${ANDROID_SDK_ROOT:-}" && -x "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ]]; then
+    sdkmanager_bin="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+  elif [[ -n "${ANDROID_HOME:-}" && -x "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" ]]; then
+    sdkmanager_bin="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+  fi
+
+  if [[ -n "${sdkmanager_bin}" ]]; then
+    yes | "${sdkmanager_bin}" --licenses >/dev/null 2>&1 || true
+    "${sdkmanager_bin}" "platforms;android-37"
+  fi
+fi
+
 if [[ -d platform/android_widget/app ]]; then
   cp -R platform/android_widget/app/. android/app/
 
