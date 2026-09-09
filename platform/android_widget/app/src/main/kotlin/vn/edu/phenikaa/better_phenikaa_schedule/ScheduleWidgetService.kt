@@ -260,9 +260,10 @@ private fun readWidgetClasses(context: Context, widgetId: Int): List<WidgetClass
             )
         }
 
-        // Never delete today's records merely because their end time has passed.
-        // Instead, anchor the circular StackView to the chosen date (today by
-        // default). This keeps 09/09 available after swiping to 10/09 and back.
+        // Index zero is the selected date (today by default). Future dates follow in
+        // ascending order. Older dates are also ascending, so the final item is the
+        // day immediately before the selected date. With loopViews enabled, swiping
+        // backwards from 09/09 therefore reaches 08/09 instead of jumping to 27/08.
         val ordered = allItems.sortedWith(
             Comparator { a, b ->
                 val aGroup = dateGroup(a.dateKey, selectedDate)
@@ -289,10 +290,7 @@ private fun readWidgetClasses(context: Context, widgetId: Int): List<WidgetClass
                         }
                     }
                     1 -> a.startAt.compareTo(b.startAt)
-                    else -> {
-                        val byDate = b.dateKey.compareTo(a.dateKey)
-                        if (byDate != 0) byDate else a.startAt.compareTo(b.startAt)
-                    }
+                    else -> a.startAt.compareTo(b.startAt)
                 }
             },
         )
