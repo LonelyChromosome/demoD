@@ -4,8 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.text.TextPaint
 import android.text.TextUtils
@@ -76,16 +79,38 @@ private class ScheduleWidgetFactory(
     ): Bitmap {
         val density = context.resources.displayMetrics.density
         val scaledDensity = context.resources.displayMetrics.scaledDensity
-        val width = (250f * density).toInt().coerceAtLeast(1)
-        val height = (64f * density).toInt().coerceAtLeast(1)
+        val width = (320f * density).toInt().coerceAtLeast(1)
+        val height = (88f * density).toInt().coerceAtLeast(1)
         val horizontal = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(horizontal)
 
-        val left = 18f * density
-        val right = width - 18f * density
+        // Each StackView card must be visually opaque. Transparent cards expose
+        // the neighbouring stacked views underneath and make all subjects look
+        // superimposed, especially on Samsung launchers.
+        val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f,
+                0f,
+                width.toFloat(),
+                0f,
+                intArrayOf(0xFF1746A2.toInt(), 0xFF3567C8.toInt()),
+                null,
+                Shader.TileMode.CLAMP,
+            )
+        }
+        val radius = 22f * density
+        canvas.drawRoundRect(
+            RectF(0f, 0f, width.toFloat(), height.toFloat()),
+            radius,
+            radius,
+            backgroundPaint,
+        )
+
+        val left = 20f * density
+        val right = width - 20f * density
         val subjectPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
-            textSize = 16f * scaledDensity
+            textSize = 15f * scaledDensity
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val detailPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -99,28 +124,28 @@ private class ScheduleWidgetFactory(
         }
 
         val counter = if (count > 1) "${position + 1}/$count" else ""
-        val counterWidth = if (counter.isEmpty()) 0f else counterPaint.measureText(counter) + 8f * density
+        val counterWidth = if (counter.isEmpty()) 0f else counterPaint.measureText(counter) + 10f * density
         val subject = TextUtils.ellipsize(
             item.subject,
             subjectPaint,
-            (right - left - counterWidth).coerceAtLeast(20f * density),
+            (right - left - counterWidth).coerceAtLeast(24f * density),
             TextUtils.TruncateAt.END,
         )
-        canvas.drawText(subject.toString(), left, 25f * density, subjectPaint)
+        canvas.drawText(subject.toString(), left, 34f * density, subjectPaint)
         if (counter.isNotEmpty()) {
-            canvas.drawText(counter, right, 20f * density, counterPaint)
+            canvas.drawText(counter, right, 29f * density, counterPaint)
         }
 
         val timeWidth = detailPaint.measureText(item.time)
-        val roomMaxWidth = (right - left - timeWidth - 12f * density).coerceAtLeast(20f * density)
+        val roomMaxWidth = (right - left - timeWidth - 14f * density).coerceAtLeast(24f * density)
         val room = TextUtils.ellipsize(
             item.room,
             detailPaint,
             roomMaxWidth,
             TextUtils.TruncateAt.END,
         )
-        canvas.drawText(room.toString(), left, 47f * density, detailPaint)
-        canvas.drawText(item.time, right - timeWidth, 47f * density, detailPaint)
+        canvas.drawText(room.toString(), left, 61f * density, detailPaint)
+        canvas.drawText(item.time, right - timeWidth, 61f * density, detailPaint)
 
         val matrix = Matrix().apply { postRotate(-90f) }
         val rotated = Bitmap.createBitmap(
