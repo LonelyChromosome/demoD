@@ -10,8 +10,10 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
+import android.os.Build
 import android.text.TextPaint
 import android.text.TextUtils
+import android.util.TypedValue
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import org.json.JSONObject
@@ -58,6 +60,22 @@ private class ScheduleWidgetFactory(
     override fun getViewAt(position: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.schedule_widget_item)
         val item = items.getOrNull(position) ?: return views
+        val widthDp = renderWidthDp.coerceIn(MIN_RENDER_WIDTH_DP, MAX_RENDER_WIDTH_DP)
+        val heightDp = renderHeightDp.coerceIn(MIN_RENDER_HEIGHT_DP, MAX_RENDER_HEIGHT_DP)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            views.setViewLayoutWidth(
+                R.id.widget_slide_item,
+                heightDp.toFloat(),
+                TypedValue.COMPLEX_UNIT_DIP,
+            )
+            views.setViewLayoutHeight(
+                R.id.widget_slide_item,
+                widthDp.toFloat(),
+                TypedValue.COMPLEX_UNIT_DIP,
+            )
+        }
+
         views.setImageViewBitmap(
             R.id.widget_slide_image,
             renderSlide(item, position, items.size),
