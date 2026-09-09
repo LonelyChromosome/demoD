@@ -21,6 +21,10 @@ void main() {
     expect(find.text('Xem bản demo từ mockup'), findsOneWidget);
 
     await tester.tap(find.text('Xem bản demo từ mockup'));
+    // Demo loading persists a local snapshot asynchronously before switching
+    // into the shell. Give that future a frame to complete, then settle UI
+    // transitions so the assertion reflects the real user-visible state.
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
 
     expect(find.text('Lịch học'), findsOneWidget);
