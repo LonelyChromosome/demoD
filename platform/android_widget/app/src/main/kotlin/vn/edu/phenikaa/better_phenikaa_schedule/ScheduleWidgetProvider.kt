@@ -48,27 +48,23 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
         val views = RemoteViews(context.packageName, R.layout.schedule_widget)
 
-        // Android StackView reserves 10% of both axes for its built-in perspective
-        // effect. Because this widget rotates the StackView by 90 degrees to preserve
-        // native horizontal swiping, that reserved area becomes a visible left/top
-        // offset. Expand the collection by 1 / 0.9 and move the expanded surface so
-        // the active 90% child exactly matches the visible widget bounds. Everything
-        // is computed from dp and display density, so the same layout stays aligned on
-        // HD, FHD and QHD screens instead of relying on device-specific pixels.
+        // StackView reserves about 10% for its built-in depth/perspective effect.
+        // Keep the density-independent compensation from the previous layout, but
+        // apply it directly because the collection is no longer rotated. This keeps
+        // the visible card aligned on HD/FHD/QHD while native vertical swipes avoid
+        // competing with the launcher's horizontal page gesture.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val stackVisualWidthDp = visualWidthDp / STACK_ACTIVE_FRACTION
             val stackVisualHeightDp = visualHeightDp / STACK_ACTIVE_FRACTION
 
-            // The collection is rotated by +90 degrees in XML, so its unrotated
-            // width/height are the visible height/width respectively.
             views.setViewLayoutWidth(
                 R.id.widget_list,
-                stackVisualHeightDp,
+                stackVisualWidthDp,
                 TypedValue.COMPLEX_UNIT_DIP,
             )
             views.setViewLayoutHeight(
                 R.id.widget_list,
-                stackVisualWidthDp,
+                stackVisualHeightDp,
                 TypedValue.COMPLEX_UNIT_DIP,
             )
 
