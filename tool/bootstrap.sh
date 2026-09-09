@@ -105,4 +105,14 @@ fi
 
 flutter pub get
 
+# flutter_inappwebview_android 1.1.3 still references the legacy default
+# ProGuard file that recent Android Gradle Plugin versions reject for release
+# builds. Patch the cached dependency reproducibly until upstream stable ships
+# the same one-line migration.
+inappwebview_gradle="${PUB_CACHE:-${HOME}/.pub-cache}/hosted/pub.dev/flutter_inappwebview_android-1.1.3/android/build.gradle"
+if [[ -f "${inappwebview_gradle}" ]] && grep -q "getDefaultProguardFile('proguard-android.txt')" "${inappwebview_gradle}"; then
+  sed -i "s/getDefaultProguardFile('proguard-android.txt')/getDefaultProguardFile('proguard-android-optimize.txt')/g" "${inappwebview_gradle}"
+  echo 'Patched flutter_inappwebview_android release ProGuard compatibility.'
+fi
+
 echo 'Bootstrap complete.'
