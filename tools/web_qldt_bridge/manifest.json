@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Better Phenikaa Web Bridge",
-  "version": "0.1.0",
-  "description": "Local bridge between Better Phenikaa web previews and an authenticated Phenikaa QLDT tab.",
-  "permissions": ["tabs", "scripting"],
+  "name": "Better Phenikaa Web Bridge - QLDT Beta",
+  "version": "0.3.0",
+  "description": "Automatic local bridge between Better Phenikaa App and an authenticated Phenikaa QLDT beta tab.",
+  "permissions": ["tabs", "scripting", "storage"],
   "host_permissions": [
     "https://qldtbeta.phenikaa-uni.edu.vn/*",
     "https://lonelychromosome.github.io/demoD/*",
@@ -27,6 +27,6 @@
     }
   ],
   "action": {
-    "default_title": "Better Phenikaa Web Bridge"
+    "default_title": "Better Phenikaa Web Bridge - QLDT Beta"
   }
 }
