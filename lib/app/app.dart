@@ -108,9 +108,7 @@ class _AppRootState extends State<_AppRoot> {
   }
 
   ScheduleRecord? _nextClass(ImportedScheduleData data) {
-    final now = data.source == 'demo'
-        ? DateTime(2026, 8, 26, 6)
-        : DateTime.now();
+    final now = DateTime.now();
     final future =
         data.classes.where((item) => !item.endAt.isBefore(now)).toList()
           ..sort((a, b) => a.startAt.compareTo(b.startAt));
@@ -160,20 +158,8 @@ class _AppRootState extends State<_AppRoot> {
     }
   }
 
-  Future<void> _loadDemo() async {
-    final demo = _buildDemoData();
-    await _save(demo);
-    if (mounted) {
-      setState(() {
-        _data = demo;
-        _selectedDate = DateTime(2026, 8, 26);
-        _page = _AppPage.timetable;
-        _errorMessage = null;
-      });
-    }
-  }
-
   Future<void> _logout() async {
+    await clearQldtSession();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_storageKey);
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
@@ -196,9 +182,6 @@ class _AppRootState extends State<_AppRoot> {
   }
 
   DateTime _initialDateFor(ImportedScheduleData data) {
-    if (data.source == 'demo') {
-      return DateTime(2026, 8, 26);
-    }
     final today = _dateOnly(DateTime.now());
     if (data.classes.any((record) => _sameDay(record.startAt, today))) {
       return today;
@@ -270,7 +253,6 @@ class _AppRootState extends State<_AppRoot> {
                           : _data == null
                           ? _LoginScreen(
                               onLogin: _loginOrSync,
-                              onDemo: _loadDemo,
                               supportsLive: supportsLiveQldtLogin,
                             )
                           : _MainShell(
@@ -352,14 +334,9 @@ class _SplashScreen extends StatelessWidget {
 }
 
 class _LoginScreen extends StatelessWidget {
-  const new({
-    required this.onLogin,
-    required this.onDemo,
-    required this.supportsLive,
-  });
+  const new({required this.onLogin, required this.supportsLive});
 
   final VoidCallback onLogin;
-  final VoidCallback onDemo;
   final bool supportsLive;
 
   @override
@@ -419,16 +396,6 @@ class _LoginScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: onDemo,
-                icon: const Icon(Icons.preview_outlined),
-                label: const Text('Xem bản demo từ mockup'),
               ),
             ),
             const SizedBox(height: 22),
@@ -614,7 +581,7 @@ class _TimetableScreen extends StatelessWidget {
           children: <Widget>[
             _TopTitle(
               title: 'Lịch học',
-              badge: data.source == 'demo' ? 'DEMO' : null,
+              badge: null,
               onCalendarTap: () =>
                   _showCalendarPicker(context, selectedDate, onDateChanged),
             ),
@@ -701,10 +668,7 @@ class _ExamScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          _TopTitle(
-            title: 'Lịch thi',
-            badge: data.source == 'demo' ? 'DEMO' : null,
-          ),
+          _TopTitle(title: 'Lịch thi', badge: null),
           const SizedBox(height: 20),
           _SegmentTabs(showPast: showPast, onChanged: onTabChanged),
           const SizedBox(height: 18),
@@ -746,10 +710,7 @@ class _AccountScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          _TopTitle(
-            title: 'Tài khoản',
-            badge: data.source == 'demo' ? 'DEMO' : null,
-          ),
+          _TopTitle(title: 'Tài khoản', badge: null),
           const SizedBox(height: 30),
           Row(
             children: <Widget>[
@@ -1347,10 +1308,7 @@ class _InfoPanel extends StatelessWidget {
             value: '${_dateShort(data.syncedAt)} ${_time(data.syncedAt)}',
           ),
           const SizedBox(height: 8),
-          _AccountInfoRow(
-            label: 'Nguồn',
-            value: data.source == 'demo' ? 'Demo từ mockup' : 'QLĐT Phenikaa',
-          ),
+          _AccountInfoRow(label: 'Nguồn', value: 'QLĐT Phenikaa'),
         ],
       ),
     );
@@ -1818,75 +1776,6 @@ class _MsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.square(dimension: 11.5, child: ColoredBox(color: color));
   }
-}
-
-ImportedScheduleData _buildDemoData() {
-  DateTime at(int month, int day, int hour, int minute) =>
-      DateTime(2026, month, day, hour, minute);
-
-  return ImportedScheduleData(
-    displayName: 'Nguyễn Văn A',
-    syncedAt: DateTime(2026, 8, 26, 9, 41),
-    source: 'demo',
-    records: <ScheduleRecord>[
-      ScheduleRecord(
-        id: 'demo-class-1',
-        isExam: false,
-        subjectName: 'Thiết kế web nâng cao',
-        room: 'A6-101',
-        startAt: at(8, 26, 6, 45),
-        endAt: at(8, 26, 9, 25),
-      ),
-      ScheduleRecord(
-        id: 'demo-class-2',
-        isExam: false,
-        subjectName: 'Lập trình mobile',
-        room: 'A6-205',
-        startAt: at(8, 26, 9, 30),
-        endAt: at(8, 26, 12, 10),
-      ),
-      ScheduleRecord(
-        id: 'demo-class-3',
-        isExam: false,
-        subjectName: 'Phân tích & thiết kế hệ thống',
-        room: 'A6-105',
-        startAt: at(8, 26, 13, 0),
-        endAt: at(8, 26, 15, 40),
-      ),
-      ScheduleRecord(
-        id: 'demo-exam-1',
-        isExam: true,
-        subjectName: 'Lập trình C++',
-        room: 'A6-201',
-        startAt: at(8, 26, 7, 30),
-        endAt: at(8, 26, 9, 0),
-      ),
-      ScheduleRecord(
-        id: 'demo-exam-2',
-        isExam: true,
-        subjectName: 'Cơ sở dữ liệu',
-        room: 'A5-302',
-        startAt: at(8, 30, 13, 30),
-        endAt: at(8, 30, 15, 0),
-      ),
-      ScheduleRecord(
-        id: 'demo-exam-3',
-        isExam: true,
-        subjectName: 'Kỹ thuật phần mềm',
-        room: 'A6-105',
-        startAt: at(9, 2, 7, 30),
-        endAt: at(9, 2, 9, 0),
-      ),
-      ScheduleRecord(
-        id: 'demo-exam-4',
-        isExam: true,
-        subjectName: 'Mạng máy tính',
-        room: 'A6-206',
-        startAt: at(9, 9, 13, 30),
-        endAt: at(9, 9, 15, 0),
-      ),
-    ],
-  );
 }
 
 Color _accentFor(int index) {

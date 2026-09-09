@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 
 const bool supportsLiveQldtLogin = true;
 
+Future<void> clearQldtSession() async {}
+
 Future<ImportedScheduleData?> openQldtLogin(BuildContext context) {
   return showDialog<ImportedScheduleData>(
     context: context,

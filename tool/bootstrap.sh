@@ -48,6 +48,7 @@ if [[ -d platform/android_widget/app ]]; then
 
   python3 - <<'PY'
 from pathlib import Path
+import re
 
 manifest = Path('android/app/src/main/AndroidManifest.xml')
 text = manifest.read_text()
@@ -74,6 +75,30 @@ receiver = '''        <receiver
 if '.ScheduleWidgetProvider' not in text:
     text = text.replace('    </application>', receiver + '    </application>', 1)
 
+text = re.sub(
+    r'android:label="[^"]*"',
+    'android:label="Better Phenikaa App"',
+    text,
+    count=1,
+)
+text = re.sub(
+    r'android:icon="[^"]*"',
+    'android:icon="@drawable/ic_launcher_better_phenikaa"',
+    text,
+    count=1,
+)
+if 'android:roundIcon=' not in text:
+    text = text.replace(
+        'android:icon="@drawable/ic_launcher_better_phenikaa"',
+        'android:icon="@drawable/ic_launcher_better_phenikaa"\n        android:roundIcon="@drawable/ic_launcher_better_phenikaa"',
+        1,
+    )
+if 'android:allowBackup=' not in text:
+    text = text.replace(
+        '<application\n',
+        '<application\n        android:allowBackup="false"\n',
+        1,
+    )
 manifest.write_text(text)
 PY
 fi

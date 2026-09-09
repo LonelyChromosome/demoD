@@ -4,9 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('app boots into the login flow and opens the demo', (
-    tester,
-  ) async {
+  testWidgets('app boots into the official QLDT login flow', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
 
     await tester.pumpWidget(
@@ -18,16 +16,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Chào mừng bạn!'), findsOneWidget);
-    expect(find.text('Xem bản demo từ mockup'), findsOneWidget);
-
-    await tester.tap(find.text('Xem bản demo từ mockup'));
-    // Demo loading persists a local snapshot asynchronously before switching
-    // into the shell. Give that future a frame to complete, then settle UI
-    // transitions so the assertion reflects the real user-visible state.
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Lịch học'), findsOneWidget);
-    expect(find.text('Thiết kế web nâng cao'), findsOneWidget);
+    expect(find.textContaining('Đăng nhập QLĐT'), findsOneWidget);
+    expect(find.textContaining('demo'), findsNothing);
+    expect(find.textContaining('mockup'), findsNothing);
   });
 }

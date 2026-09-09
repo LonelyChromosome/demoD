@@ -4,6 +4,10 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 const bool supportsLiveQldtLogin = true;
 
+Future<void> clearQldtSession() async {
+  await CookieManager.instance().deleteAllCookies();
+}
+
 Future<ImportedScheduleData?> openQldtLogin(BuildContext context) {
   return Navigator.of(context).push<ImportedScheduleData>(
     MaterialPageRoute<ImportedScheduleData>(

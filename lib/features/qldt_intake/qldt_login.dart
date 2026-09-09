@@ -9,3 +9,5 @@ bool get supportsLiveQldtLogin => implementation.supportsLiveQldtLogin;
 Future<ImportedScheduleData?> openQldtLogin(BuildContext context) {
   return implementation.openQldtLogin(context);
 }
+
+Future<void> clearQldtSession() => implementation.clearQldtSession();
