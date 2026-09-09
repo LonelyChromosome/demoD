@@ -148,6 +148,14 @@ service = '''        <service
 if '.ScheduleWidgetService' not in text:
     text = text.replace('    </application>', service + '    </application>', 1)
 
+activity = '''        <activity
+            android:name=".WidgetDatePickerActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+'''
+if '.WidgetDatePickerActivity' not in text:
+    text = text.replace('    </application>', activity + '    </application>', 1)
+
 text = re.sub(
     r'android:label="[^"]*"',
     'android:label="Better Phenikaa App"',
