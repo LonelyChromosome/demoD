@@ -48,20 +48,37 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
         val views = RemoteViews(context.packageName, R.layout.schedule_widget)
 
-        // The collection scrolls vertically in its own coordinates and is rotated
-        // by 90 degrees in XML. Swapping its measured width/height makes the
-        // transformed touch surface cover the entire visible widget.
+        // Android StackView reserves 10% of both axes for its built-in perspective
+        // effect. Because this widget rotates the StackView by 90 degrees to preserve
+        // native horizontal swiping, that reserved area becomes a visible left/top
+        // offset. Expand the collection by 1 / 0.9 and move the expanded surface so
+        // the active 90% child exactly matches the visible widget bounds. Everything
+        // is computed from dp and display density, so the same layout stays aligned on
+        // HD, FHD and QHD screens instead of relying on device-specific pixels.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val stackVisualWidthDp = visualWidthDp / STACK_ACTIVE_FRACTION
+            val stackVisualHeightDp = visualHeightDp / STACK_ACTIVE_FRACTION
+
+            // The collection is rotated by +90 degrees in XML, so its unrotated
+            // width/height are the visible height/width respectively.
             views.setViewLayoutWidth(
                 R.id.widget_list,
-                visualHeightDp.toFloat(),
+                stackVisualHeightDp,
                 TypedValue.COMPLEX_UNIT_DIP,
             )
             views.setViewLayoutHeight(
                 R.id.widget_list,
-                visualWidthDp.toFloat(),
+                stackVisualWidthDp,
                 TypedValue.COMPLEX_UNIT_DIP,
             )
+
+            val density = context.resources.displayMetrics.density
+            val translationXPx =
+                ((stackVisualWidthDp - visualWidthDp) / 2f) * density
+            val translationYPx =
+                ((stackVisualHeightDp - visualHeightDp) / 2f) * density
+            views.setFloat(R.id.widget_list, "setTranslationX", translationXPx)
+            views.setFloat(R.id.widget_list, "setTranslationY", translationYPx)
         }
 
         val serviceIntent = Intent(context, ScheduleWidgetService::class.java).apply {
@@ -95,6 +112,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         const val EXTRA_RENDER_WIDTH_DP = "renderWidthDp"
         const val EXTRA_RENDER_HEIGHT_DP = "renderHeightDp"
 
+        private const val STACK_ACTIVE_FRACTION = 0.9f
         private const val DEFAULT_WIDGET_WIDTH_DP = 250
         private const val DEFAULT_WIDGET_HEIGHT_DP = 64
         private const val MIN_WIDGET_WIDTH_DP = 220
