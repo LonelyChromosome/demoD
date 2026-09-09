@@ -49,10 +49,9 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.schedule_widget)
 
         // StackView reserves about 10% for its built-in depth/perspective effect.
-        // Keep the density-independent compensation from the previous layout, but
-        // apply it directly because the collection is no longer rotated. This keeps
-        // the visible card aligned on HD/FHD/QHD while native vertical swipes avoid
-        // competing with the launcher's horizontal page gesture.
+        // Keep density-independent compensation so the visible card remains aligned
+        // across HD/FHD/QHD while native vertical swiping stays isolated from the
+        // launcher's horizontal page gesture.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val stackVisualWidthDp = visualWidthDp / STACK_ACTIVE_FRACTION
             val stackVisualHeightDp = visualHeightDp / STACK_ACTIVE_FRACTION
@@ -100,6 +99,23 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_empty, openApp)
         }
 
+        val chooseDateIntent = Intent(context, WidgetDatePickerActivity::class.java).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            data = Uri.parse("better-phenikaa://widget/$widgetId/date-picker")
+        }
+        val chooseDate = PendingIntent.getActivity(
+            context,
+            DATE_PICKER_REQUEST_CODE_BASE + widgetId,
+            chooseDateIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        views.setOnClickPendingIntent(R.id.widget_calendar, chooseDate)
+
+        // Index zero is always the selected day (today by default). Resetting only
+        // when the provider refreshes keeps the chosen day immediately visible while
+        // ordinary StackView swipes still loop normally afterwards.
+        views.setDisplayedChild(R.id.widget_list, 0)
+
         appWidgetManager.updateAppWidget(widgetId, views)
         appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list)
     }
@@ -107,7 +123,11 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
     companion object {
         const val EXTRA_RENDER_WIDTH_DP = "renderWidthDp"
         const val EXTRA_RENDER_HEIGHT_DP = "renderHeightDp"
+        const val WIDGET_SELECTION_PREFS = "better_phenikaa_widget_selection"
 
+        fun selectedDateKey(widgetId: Int): String = "selected_date_$widgetId"
+
+        private const val DATE_PICKER_REQUEST_CODE_BASE = 100_000
         private const val STACK_ACTIVE_FRACTION = 0.9f
         private const val DEFAULT_WIDGET_WIDTH_DP = 250
         private const val DEFAULT_WIDGET_HEIGHT_DP = 64
