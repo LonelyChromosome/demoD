@@ -28,6 +28,7 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
   InAppWebViewController? _controller;
   bool _pageReady = false;
   bool _syncing = false;
+  bool _autoSyncStarted = false;
   String _status = 'Đăng nhập bằng tài khoản Microsoft của bạn.';
 
   @override
@@ -69,6 +70,7 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
               ),
             ),
           ),
+          if (_syncing) const LinearProgressIndicator(minHeight: 3),
           Expanded(
             child: InAppWebView(
               initialUrlRequest: URLRequest(url: _qldtUri),
@@ -79,31 +81,22 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
               onLoadStop: (_, _) => _checkReady(),
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: FilledButton.icon(
-                  onPressed: _pageReady && !_syncing ? _sync : null,
-                  icon: _syncing
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.sync_rounded),
-                  label: Text(
-                    _syncing ? 'Đang đồng bộ...' : 'Đồng bộ lịch từ QLĐT',
+          if (_pageReady && !_syncing && _autoSyncStarted)
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: _sync,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Thử đồng bộ lại'),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -166,13 +159,20 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
         ''',
       );
       final ready = result == true || result?.toString() == 'true';
-      if (mounted) {
-        setState(() {
-          _pageReady = ready;
-          _status = ready
-              ? 'Đã nhận phiên QLĐT. Bạn có thể đồng bộ lịch.'
-              : 'Hoàn tất đăng nhập Microsoft rồi quay lại trang QLĐT.';
-        });
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _pageReady = ready;
+        _status = ready
+            ? 'Đã nhận phiên QLĐT. App đang tự lấy lịch và sẽ quay lại ngay khi hoàn tất.'
+            : 'Hoàn tất đăng nhập Microsoft; app sẽ tự đồng bộ khi QLĐT sẵn sàng.';
+      });
+
+      if (ready && !_autoSyncStarted && !_syncing) {
+        _autoSyncStarted = true;
+        await _sync();
       }
     } on Object {
       if (mounted) {
@@ -183,7 +183,7 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
 
   Future<void> _sync() async {
     final controller = _controller;
-    if (controller == null) {
+    if (controller == null || _syncing) {
       return;
     }
     setState(() {
