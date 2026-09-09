@@ -104,7 +104,7 @@ PY
     fi
 
     yes | "${sdkmanager_bin}" --licenses >/dev/null 2>&1 || true
-    "${sdkmanager_bin}" --channel=3 "platforms;android-37"
+    "${sdkmanager_bin}" "platforms;android-37.0" "build-tools;37.0.0"
   fi
 fi
 
