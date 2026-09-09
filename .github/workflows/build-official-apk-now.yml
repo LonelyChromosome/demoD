@@ -6,6 +6,12 @@ on:
       - feature/full-app-implementation
     paths:
       - '.github/workflows/build-official-apk-now.yml'
+      - 'tool/bootstrap.sh'
+      - 'lib/**'
+      - 'platform/android_widget/**'
+      - 'pubspec.yaml'
+      - 'analysis_options.yaml'
+      - 'test/**'
 
 permissions:
   contents: read
@@ -34,7 +40,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Bootstrap Android and dependencies
+      - name: Bootstrap Android SDK 37 and dependencies
         run: bash tool/bootstrap.sh
 
       - name: Verify formatting
@@ -54,6 +60,8 @@ jobs:
           grep -q 'android:label="Better Phenikaa App"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:icon="@drawable/ic_launcher_better_phenikaa"' android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          grep -q 'compileSdk = 37' android/app/build.gradle.kts
+          grep -q 'com.android.application") version "9.1.1"' android/settings.gradle.kts
           grep -q 'qldtbeta.phenikaa-uni.edu.vn' lib/features/qldt_intake/qldt_login_mobile.dart
           if grep -RniE '\bdemo\b|mockup' lib --include='*.dart'; then
             echo 'Production Dart still contains preview-only wording.' >&2
