@@ -116,10 +116,6 @@ private class ScheduleWidgetFactory(
         val horizontal = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(horizontal)
 
-        // StackView keeps neighbouring cards behind the active one. The previous
-        // transparent slide bitmap exposed every neighbour's text, which is why
-        // several subjects were drawn on top of each other on the home screen.
-        // Paint the whole active card first so only one slide is readable.
         val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 0f,
@@ -142,6 +138,14 @@ private class ScheduleWidgetFactory(
         val sizeScale = (heightDp / DEFAULT_WIDGET_HEIGHT_DP.toFloat()).coerceIn(0.88f, 1.18f)
         val left = 18f * density
         val right = width - 18f * density
+
+        // Android StackView deliberately leaves a narrow part of the cards behind
+        // the active card visible. Keep every card's readable content out of that
+        // stack-only edge so the home screen can never expose text from neighbours.
+        // The StackView itself and its native swipe behaviour remain unchanged.
+        val contentRight = (right - STACK_PEEK_SAFE_INSET_DP * density)
+            .coerceAtLeast(left + 120f * density)
+
         val subjectPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
             textSize = 16f * scaledDensity * sizeScale
@@ -166,16 +170,17 @@ private class ScheduleWidgetFactory(
         val subject = TextUtils.ellipsize(
             item.subject,
             subjectPaint,
-            (right - left - counterWidth).coerceAtLeast(20f * density),
+            (contentRight - left - counterWidth).coerceAtLeast(20f * density),
             TextUtils.TruncateAt.END,
         )
         canvas.drawText(subject.toString(), left, height * 0.40f, subjectPaint)
         if (counter.isNotEmpty()) {
-            canvas.drawText(counter, right, height * 0.31f, counterPaint)
+            canvas.drawText(counter, contentRight, height * 0.31f, counterPaint)
         }
 
         val timeWidth = detailPaint.measureText(item.time)
-        val roomMaxWidth = (right - left - timeWidth - 12f * density).coerceAtLeast(20f * density)
+        val roomMaxWidth = (contentRight - left - timeWidth - 12f * density)
+            .coerceAtLeast(20f * density)
         val room = TextUtils.ellipsize(
             item.room,
             detailPaint,
@@ -183,7 +188,7 @@ private class ScheduleWidgetFactory(
             TextUtils.TruncateAt.END,
         )
         canvas.drawText(room.toString(), left, height * 0.74f, detailPaint)
-        canvas.drawText(item.time, right - timeWidth, height * 0.74f, detailPaint)
+        canvas.drawText(item.time, contentRight - timeWidth, height * 0.74f, detailPaint)
 
         // Parent StackView is +90 degrees. Counter-rotating the card keeps the
         // content upright while preserving a native horizontal swipe gesture.
@@ -281,3 +286,4 @@ private const val MIN_RENDER_WIDTH_DP = 220
 private const val MAX_RENDER_WIDTH_DP = 420
 private const val MIN_RENDER_HEIGHT_DP = 56
 private const val MAX_RENDER_HEIGHT_DP = 110
+private const val STACK_PEEK_SAFE_INSET_DP = 40f
