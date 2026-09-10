@@ -7,9 +7,13 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.util.SizeF
 import android.util.TypedValue
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
+import java.util.Locale
+import kotlin.math.roundToInt
 
 class ScheduleWidgetProvider : HomeWidgetProvider() {
     override fun onUpdate(
@@ -27,7 +31,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int,
-        newOptions: android.os.Bundle,
+        newOptions: Bundle,
     ) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
         renderWidget(context, appWidgetManager, appWidgetId)
@@ -39,22 +43,61 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         widgetId: Int,
     ) {
         val options = appWidgetManager.getAppWidgetOptions(widgetId)
-        val visualWidthDp = options
-            .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, DEFAULT_WIDGET_WIDTH_DP)
-            .coerceAtLeast(MIN_WIDGET_WIDTH_DP)
-        val visualHeightDp = options
-            .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, DEFAULT_WIDGET_HEIGHT_DP)
-            .coerceAtLeast(MIN_WIDGET_HEIGHT_DP)
 
+        val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val exactSizes = exactWidgetSizes(options)
+            if (exactSizes.isNotEmpty()) {
+                val sizedViews = LinkedHashMap<SizeF, RemoteViews>()
+                exactSizes.take(MAX_EXACT_LAYOUTS).forEach { size ->
+                    sizedViews[size] = buildWidgetViews(
+                        context = context,
+                        widgetId = widgetId,
+                        visualWidthDp = size.width,
+                        visualHeightDp = size.height,
+                    )
+                }
+                RemoteViews(sizedViews)
+            } else {
+                val fallback = legacyWidgetSize(options)
+                buildWidgetViews(
+                    context = context,
+                    widgetId = widgetId,
+                    visualWidthDp = fallback.width,
+                    visualHeightDp = fallback.height,
+                )
+            }
+        } else {
+            val fallback = legacyWidgetSize(options)
+            buildWidgetViews(
+                context = context,
+                widgetId = widgetId,
+                visualWidthDp = fallback.width,
+                visualHeightDp = fallback.height,
+            )
+        }
+
+        appWidgetManager.updateAppWidget(widgetId, views)
+        appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list)
+    }
+
+    private fun buildWidgetViews(
+        context: Context,
+        widgetId: Int,
+        visualWidthDp: Float,
+        visualHeightDp: Float,
+    ): RemoteViews {
+        val widthDp = visualWidthDp.coerceAtLeast(1f)
+        val heightDp = visualHeightDp.coerceAtLeast(1f)
+        val renderWidthDp = widthDp.roundToInt().coerceAtLeast(1)
+        val renderHeightDp = heightDp.roundToInt().coerceAtLeast(1)
         val views = RemoteViews(context.packageName, R.layout.schedule_widget)
 
-        // StackView reserves about 10% for its built-in depth/perspective effect.
-        // Keep density-independent compensation so the visible card remains aligned
-        // across HD/FHD/QHD while native vertical swiping stays isolated from the
-        // launcher's horizontal page gesture.
+        // StackView keeps a small perspective/depth inset around its active child.
+        // Compensate from the exact host-provided size rather than from a fixed grid
+        // assumption, so the visible card still fills the widget on different launchers.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val stackVisualWidthDp = visualWidthDp / STACK_ACTIVE_FRACTION
-            val stackVisualHeightDp = visualHeightDp / STACK_ACTIVE_FRACTION
+            val stackVisualWidthDp = widthDp / STACK_ACTIVE_FRACTION
+            val stackVisualHeightDp = heightDp / STACK_ACTIVE_FRACTION
 
             views.setViewLayoutWidth(
                 R.id.widget_list,
@@ -68,21 +111,36 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
             )
 
             val density = context.resources.displayMetrics.density
-            val translationXPx =
-                ((stackVisualWidthDp - visualWidthDp) / 2f) * density
-            val translationYPx =
-                ((stackVisualHeightDp - visualHeightDp) / 2f) * density
+            val translationXPx = ((stackVisualWidthDp - widthDp) / 2f) * density
+            val translationYPx = ((stackVisualHeightDp - heightDp) / 2f) * density
             views.setFloat(R.id.widget_list, "setTranslationX", translationXPx)
             views.setFloat(R.id.widget_list, "setTranslationY", translationYPx)
+
+            val calendarSizeDp = (heightDp * CALENDAR_HEIGHT_FRACTION)
+                .coerceIn(MIN_CALENDAR_SIZE_DP, MAX_CALENDAR_SIZE_DP)
+            views.setViewLayoutWidth(
+                R.id.widget_calendar,
+                calendarSizeDp,
+                TypedValue.COMPLEX_UNIT_DIP,
+            )
+            views.setViewLayoutHeight(
+                R.id.widget_calendar,
+                calendarSizeDp,
+                TypedValue.COMPLEX_UNIT_DIP,
+            )
         }
 
+        val sizeToken = String.format(
+            Locale.US,
+            "%.1fx%.1f",
+            widthDp,
+            heightDp,
+        )
         val serviceIntent = Intent(context, ScheduleWidgetService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-            putExtra(EXTRA_RENDER_WIDTH_DP, visualWidthDp)
-            putExtra(EXTRA_RENDER_HEIGHT_DP, visualHeightDp)
-            data = Uri.parse(
-                "better-phenikaa://widget/$widgetId/${visualWidthDp}x$visualHeightDp",
-            )
+            putExtra(EXTRA_RENDER_WIDTH_DP, renderWidthDp)
+            putExtra(EXTRA_RENDER_HEIGHT_DP, renderHeightDp)
+            data = Uri.parse("better-phenikaa://widget/$widgetId/$sizeToken")
         }
         views.setRemoteAdapter(R.id.widget_list, serviceIntent)
         views.setEmptyView(R.id.widget_list, R.id.widget_empty)
@@ -111,13 +169,51 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_calendar, chooseDate)
 
-        // Index zero is always the selected day (today by default). Resetting only
-        // when the provider refreshes keeps the chosen day immediately visible while
-        // ordinary StackView swipes still loop normally afterwards.
+        // The selected day (today by default) remains the first item whenever the
+        // provider refreshes. Ordinary StackView swipes continue to loop normally.
         views.setDisplayedChild(R.id.widget_list, 0)
+        return views
+    }
 
-        appWidgetManager.updateAppWidget(widgetId, views)
-        appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list)
+    @Suppress("DEPRECATION")
+    private fun exactWidgetSizes(options: Bundle): List<SizeF> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return emptyList()
+        }
+        return options
+            .getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+            .orEmpty()
+            .filter { it.width > 0f && it.height > 0f }
+            .distinctBy { size ->
+                "${(size.width * 10f).roundToInt()}x${(size.height * 10f).roundToInt()}"
+            }
+    }
+
+    private fun legacyWidgetSize(options: Bundle): SizeF {
+        val minWidth = options
+            .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, DEFAULT_WIDGET_WIDTH_DP)
+            .takeIf { it > 0 }
+            ?: DEFAULT_WIDGET_WIDTH_DP
+        val maxWidth = options
+            .getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth)
+            .takeIf { it > 0 }
+            ?: minWidth
+        val minHeight = options
+            .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, DEFAULT_WIDGET_HEIGHT_DP)
+            .takeIf { it > 0 }
+            ?: DEFAULT_WIDGET_HEIGHT_DP
+        val maxHeight = options
+            .getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight)
+            .takeIf { it > 0 }
+            ?: minHeight
+
+        // For a one-row horizontal widget, use the widest host bound and the shortest
+        // valid height. This is only a fallback for launchers that do not publish the
+        // Android 12 exact size list.
+        return SizeF(
+            maxOf(minWidth, maxWidth).toFloat(),
+            minOf(minHeight, maxHeight).toFloat(),
+        )
     }
 
     companion object {
@@ -128,10 +224,12 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         fun selectedDateKey(widgetId: Int): String = "selected_date_$widgetId"
 
         private const val DATE_PICKER_REQUEST_CODE_BASE = 100_000
+        private const val MAX_EXACT_LAYOUTS = 16
         private const val STACK_ACTIVE_FRACTION = 0.9f
+        private const val CALENDAR_HEIGHT_FRACTION = 0.56f
+        private const val MIN_CALENDAR_SIZE_DP = 28f
+        private const val MAX_CALENDAR_SIZE_DP = 42f
         private const val DEFAULT_WIDGET_WIDTH_DP = 250
         private const val DEFAULT_WIDGET_HEIGHT_DP = 64
-        private const val MIN_WIDGET_WIDTH_DP = 220
-        private const val MIN_WIDGET_HEIGHT_DP = 56
     }
 }
