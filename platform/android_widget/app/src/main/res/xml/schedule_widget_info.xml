@@ -4,7 +4,8 @@
     android:initialLayout="@layout/schedule_widget"
     android:minWidth="250dp"
     android:minHeight="64dp"
+    android:minResizeWidth="180dp"
     android:previewLayout="@layout/schedule_widget"
-    android:resizeMode="none"
+    android:resizeMode="horizontal"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen" />
