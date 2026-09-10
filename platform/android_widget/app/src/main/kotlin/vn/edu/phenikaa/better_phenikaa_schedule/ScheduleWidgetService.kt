@@ -20,6 +20,7 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.max
 
 class ScheduleWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
@@ -65,8 +66,8 @@ private class ScheduleWidgetFactory(
     override fun getViewAt(position: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.schedule_widget_item)
         val item = items.getOrNull(position) ?: return views
-        val widthDp = renderWidthDp.coerceIn(MIN_RENDER_WIDTH_DP, MAX_RENDER_WIDTH_DP)
-        val heightDp = renderHeightDp.coerceIn(MIN_RENDER_HEIGHT_DP, MAX_RENDER_HEIGHT_DP)
+        val widthDp = renderWidthDp.coerceAtLeast(1)
+        val heightDp = renderHeightDp.coerceAtLeast(1)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             views.setViewLayoutWidth(
@@ -113,9 +114,8 @@ private class ScheduleWidgetFactory(
         count: Int,
     ): Bitmap {
         val density = context.resources.displayMetrics.density
-        val scaledDensity = context.resources.displayMetrics.scaledDensity
-        val widthDp = renderWidthDp.coerceIn(MIN_RENDER_WIDTH_DP, MAX_RENDER_WIDTH_DP)
-        val heightDp = renderHeightDp.coerceIn(MIN_RENDER_HEIGHT_DP, MAX_RENDER_HEIGHT_DP)
+        val widthDp = renderWidthDp.coerceAtLeast(1)
+        val heightDp = renderHeightDp.coerceAtLeast(1)
         val width = (widthDp * density).toInt().coerceAtLeast(1)
         val height = (heightDp * density).toInt().coerceAtLeast(1)
         val horizontal = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -132,7 +132,7 @@ private class ScheduleWidgetFactory(
                 Shader.TileMode.CLAMP,
             )
         }
-        val radius = 18f * density
+        val radius = height * 0.28f
         canvas.drawRoundRect(
             RectF(0f, 0f, width.toFloat(), height.toFloat()),
             radius,
@@ -140,27 +140,28 @@ private class ScheduleWidgetFactory(
             backgroundPaint,
         )
 
-        val sizeScale = (heightDp / DEFAULT_WIDGET_HEIGHT_DP.toFloat()).coerceIn(0.88f, 1.18f)
-        val left = 18f * density
-        val right = width - 18f * density
-
-        // The right edge stays free for StackView perspective and the calendar
-        // button overlaid by schedule_widget.xml.
-        val contentRight = (right - STACK_PEEK_SAFE_INSET_DP * density)
-            .coerceAtLeast(left + 120f * density)
+        // Size every visual element from the actual widget frame. Do not assume a
+        // specific launcher grid width: a 1-row widget can be narrow or span the
+        // entire screen and its contents should retain the same proportions.
+        val horizontalInset = max(width * 0.035f, 10f * density)
+        val left = horizontalInset
+        val right = width - horizontalInset
+        val calendarSafeInset = max(height * 0.62f, 30f * density)
+        val contentRight = (right - calendarSafeInset)
+            .coerceAtLeast(left + width * 0.40f)
 
         val subjectPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
-            textSize = 16f * scaledDensity * sizeScale
+            textSize = height * 0.245f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val detailPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFDDE8FF.toInt()
-            textSize = 11f * scaledDensity * sizeScale
+            textSize = height * 0.165f
         }
         val counterPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFBFD0F5.toInt()
-            textSize = 9f * scaledDensity * sizeScale
+            textSize = height * 0.135f
             textAlign = Paint.Align.RIGHT
         }
 
@@ -168,31 +169,31 @@ private class ScheduleWidgetFactory(
         val counterWidth = if (counter.isEmpty()) {
             0f
         } else {
-            counterPaint.measureText(counter) + 8f * density
+            counterPaint.measureText(counter) + width * 0.018f
         }
         val subject = TextUtils.ellipsize(
             item.subject,
             subjectPaint,
-            (contentRight - left - counterWidth).coerceAtLeast(20f * density),
+            (contentRight - left - counterWidth).coerceAtLeast(width * 0.12f),
             TextUtils.TruncateAt.END,
         )
-        canvas.drawText(subject.toString(), left, height * 0.40f, subjectPaint)
+        canvas.drawText(subject.toString(), left, height * 0.42f, subjectPaint)
         if (counter.isNotEmpty()) {
             canvas.drawText(counter, contentRight, height * 0.31f, counterPaint)
         }
 
         val timeWidth = detailPaint.measureText(item.time)
-        val roomMaxWidth = (contentRight - left - timeWidth - 12f * density)
-            .coerceAtLeast(20f * density)
+        val roomMaxWidth = (contentRight - left - timeWidth - width * 0.025f)
+            .coerceAtLeast(width * 0.12f)
         val room = TextUtils.ellipsize(
             item.room,
             detailPaint,
             roomMaxWidth,
             TextUtils.TruncateAt.END,
         )
-        canvas.drawText(room.toString(), left, height * 0.74f, detailPaint)
+        canvas.drawText(room.toString(), left, height * 0.76f, detailPaint)
         if (item.time.isNotBlank()) {
-            canvas.drawText(item.time, contentRight - timeWidth, height * 0.74f, detailPaint)
+            canvas.drawText(item.time, contentRight - timeWidth, height * 0.76f, detailPaint)
         }
 
         return horizontal
@@ -353,8 +354,3 @@ private const val DATE_PATTERN = "yyyy-MM-dd"
 private const val DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss"
 private const val DEFAULT_WIDGET_WIDTH_DP = 250
 private const val DEFAULT_WIDGET_HEIGHT_DP = 64
-private const val MIN_RENDER_WIDTH_DP = 220
-private const val MAX_RENDER_WIDTH_DP = 420
-private const val MIN_RENDER_HEIGHT_DP = 56
-private const val MAX_RENDER_HEIGHT_DP = 110
-private const val STACK_PEEK_SAFE_INSET_DP = 40f
