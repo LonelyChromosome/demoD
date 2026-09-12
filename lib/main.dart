@@ -9,7 +9,7 @@ void main() {
 }
 
 class _StartupCredit extends StatefulWidget {
-  const _StartupCredit({required this.child});
+  const new({required this.child});
 
   final Widget child;
 
