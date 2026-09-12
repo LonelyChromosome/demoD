@@ -13,6 +13,7 @@ import android.util.TypedValue
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
 import java.util.Locale
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 class ScheduleWidgetProvider : HomeWidgetProvider() {
@@ -92,32 +93,25 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         val renderHeightDp = heightDp.roundToInt().coerceAtLeast(1)
         val views = RemoteViews(context.packageName, R.layout.schedule_widget)
 
-        // StackView keeps a small perspective/depth inset around its active child.
-        // Compensate from the exact host-provided size rather than from a fixed grid
-        // assumption, so the visible card still fills the widget on different launchers.
+        // Use the exact host bounds. Do not enlarge/translate StackView to compensate
+        // for a particular launcher grid: that workaround can push the card outside
+        // its rounded outline on other launchers and produces clipped corners.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val stackVisualWidthDp = widthDp / STACK_ACTIVE_FRACTION
-            val stackVisualHeightDp = heightDp / STACK_ACTIVE_FRACTION
-
             views.setViewLayoutWidth(
                 R.id.widget_list,
-                stackVisualWidthDp,
+                widthDp,
                 TypedValue.COMPLEX_UNIT_DIP,
             )
             views.setViewLayoutHeight(
                 R.id.widget_list,
-                stackVisualHeightDp,
+                heightDp,
                 TypedValue.COMPLEX_UNIT_DIP,
             )
 
-            val density = context.resources.displayMetrics.density
-            val translationXPx = ((stackVisualWidthDp - widthDp) / 2f) * density
-            val translationYPx = ((stackVisualHeightDp - heightDp) / 2f) * density
-            views.setFloat(R.id.widget_list, "setTranslationX", translationXPx)
-            views.setFloat(R.id.widget_list, "setTranslationY", translationYPx)
-
-            val calendarSizeDp = (heightDp * CALENDAR_HEIGHT_FRACTION)
-                .coerceIn(MIN_CALENDAR_SIZE_DP, MAX_CALENDAR_SIZE_DP)
+            val calendarSizeDp = min(
+                heightDp * CALENDAR_HEIGHT_FRACTION,
+                widthDp * CALENDAR_WIDTH_FRACTION,
+            ).coerceIn(MIN_CALENDAR_SIZE_DP, MAX_CALENDAR_SIZE_DP)
             views.setViewLayoutWidth(
                 R.id.widget_calendar,
                 calendarSizeDp,
@@ -207,9 +201,9 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
             .takeIf { it > 0 }
             ?: minHeight
 
-        // For a one-row horizontal widget, use the widest host bound and the shortest
-        // valid height. This is only a fallback for launchers that do not publish the
-        // Android 12 exact size list.
+        // A one-row widget should use all horizontal space the launcher assigned.
+        // Width is therefore taken from the widest host bound, while height stays at
+        // the shortest valid row height. No cell-count assumption is involved.
         return SizeF(
             maxOf(minWidth, maxWidth).toFloat(),
             minOf(minHeight, maxHeight).toFloat(),
@@ -225,11 +219,11 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
         private const val DATE_PICKER_REQUEST_CODE_BASE = 100_000
         private const val MAX_EXACT_LAYOUTS = 16
-        private const val STACK_ACTIVE_FRACTION = 0.9f
         private const val CALENDAR_HEIGHT_FRACTION = 0.56f
-        private const val MIN_CALENDAR_SIZE_DP = 28f
+        private const val CALENDAR_WIDTH_FRACTION = 0.12f
+        private const val MIN_CALENDAR_SIZE_DP = 26f
         private const val MAX_CALENDAR_SIZE_DP = 42f
-        private const val DEFAULT_WIDGET_WIDTH_DP = 250
+        private const val DEFAULT_WIDGET_WIDTH_DP = 320
         private const val DEFAULT_WIDGET_HEIGHT_DP = 64
     }
 }
