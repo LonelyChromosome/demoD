@@ -108,10 +108,13 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 TypedValue.COMPLEX_UNIT_DIP,
             )
 
+            // Keep the calendar action as a small corner control. Its square size and
+            // inner padding are proportional to the actual host frame, so it does not
+            // consume a fixed-width strip on different launcher grids.
             val calendarSizeDp = min(
                 heightDp * CALENDAR_HEIGHT_FRACTION,
                 widthDp * CALENDAR_WIDTH_FRACTION,
-            ).coerceIn(MIN_CALENDAR_SIZE_DP, MAX_CALENDAR_SIZE_DP)
+            ).coerceAtLeast(1f)
             views.setViewLayoutWidth(
                 R.id.widget_calendar,
                 calendarSizeDp,
@@ -121,6 +124,18 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 R.id.widget_calendar,
                 calendarSizeDp,
                 TypedValue.COMPLEX_UNIT_DIP,
+            )
+            val calendarPaddingPx = (
+                calendarSizeDp *
+                    context.resources.displayMetrics.density *
+                    CALENDAR_PADDING_FRACTION
+            ).roundToInt()
+            views.setViewPadding(
+                R.id.widget_calendar,
+                calendarPaddingPx,
+                calendarPaddingPx,
+                calendarPaddingPx,
+                calendarPaddingPx,
             )
         }
 
@@ -219,10 +234,9 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
         private const val DATE_PICKER_REQUEST_CODE_BASE = 100_000
         private const val MAX_EXACT_LAYOUTS = 16
-        private const val CALENDAR_HEIGHT_FRACTION = 0.56f
-        private const val CALENDAR_WIDTH_FRACTION = 0.12f
-        private const val MIN_CALENDAR_SIZE_DP = 26f
-        private const val MAX_CALENDAR_SIZE_DP = 42f
+        private const val CALENDAR_HEIGHT_FRACTION = 0.42f
+        private const val CALENDAR_WIDTH_FRACTION = 0.085f
+        private const val CALENDAR_PADDING_FRACTION = 0.19f
         private const val DEFAULT_WIDGET_WIDTH_DP = 320
         private const val DEFAULT_WIDGET_HEIGHT_DP = 64
     }
