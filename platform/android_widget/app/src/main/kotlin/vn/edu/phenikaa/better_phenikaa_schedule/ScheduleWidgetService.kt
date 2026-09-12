@@ -83,7 +83,7 @@ private class ScheduleWidgetFactory(
 
         views.setImageViewBitmap(
             R.id.widget_slide_image,
-            renderSlide(item, position, items.size),
+            renderSlide(item),
         )
         views.setOnClickFillInIntent(
             R.id.widget_slide_item,
@@ -107,11 +107,7 @@ private class ScheduleWidgetFactory(
         items = readWidgetClasses(context, widgetId)
     }
 
-    private fun renderSlide(
-        item: WidgetClass,
-        position: Int,
-        count: Int,
-    ): Bitmap {
+    private fun renderSlide(item: WidgetClass): Bitmap {
         val density = context.resources.displayMetrics.density
         val widthDp = renderWidthDp.coerceAtLeast(1)
         val heightDp = renderHeightDp.coerceAtLeast(1)
@@ -141,12 +137,12 @@ private class ScheduleWidgetFactory(
             backgroundPaint,
         )
 
-        // StackView applies its own perspective transform to collection children.
-        // Place the actual content using proportions of the rendered frame so the
-        // visible inset remains consistent across launcher grids and resolutions.
-        // The root card, colours and visual hierarchy stay unchanged.
+        // Every coordinate is proportional to the real frame supplied by the host.
+        // The left inset keeps the original visual breathing room while the right
+        // side is now used by the content instead of being reserved for a counter.
         val left = widthPx * CONTENT_LEFT_FRACTION
-        val contentRight = widthPx * CONTENT_RIGHT_FRACTION
+        val titleRight = widthPx * TITLE_RIGHT_FRACTION
+        val detailRight = widthPx * DETAIL_RIGHT_FRACTION
 
         val subjectPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
@@ -157,24 +153,20 @@ private class ScheduleWidgetFactory(
             color = 0xFFDDE8FF.toInt()
             textSize = heightPx * DETAIL_TEXT_HEIGHT_FRACTION
         }
-        val counterPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFFBFD0F5.toInt()
-            textSize = heightPx * COUNTER_TEXT_HEIGHT_FRACTION
-            textAlign = Paint.Align.RIGHT
-        }
 
-        val counter = if (count > 1) "${position + 1}/$count" else ""
-        val counterWidth = if (counter.isEmpty()) {
-            0f
-        } else {
-            counterPaint.measureText(counter) + widthPx * COUNTER_GAP_WIDTH_FRACTION
+        val titleMaxWidth = (titleRight - left).coerceAtLeast(
+            widthPx * MIN_TITLE_WIDTH_FRACTION,
+        )
+        val naturalTitleWidth = subjectPaint.measureText(item.subject)
+        if (naturalTitleWidth > titleMaxWidth && naturalTitleWidth > 0f) {
+            val fitScale = (titleMaxWidth / naturalTitleWidth)
+                .coerceAtLeast(MIN_SUBJECT_FIT_SCALE)
+            subjectPaint.textSize *= fitScale
         }
         val subject = TextUtils.ellipsize(
             item.subject,
             subjectPaint,
-            (contentRight - left - counterWidth).coerceAtLeast(
-                widthPx * MIN_TEXT_WIDTH_FRACTION,
-            ),
+            titleMaxWidth,
             TextUtils.TruncateAt.END,
         )
         canvas.drawText(
@@ -183,19 +175,11 @@ private class ScheduleWidgetFactory(
             heightPx * SUBJECT_BASELINE_HEIGHT_FRACTION,
             subjectPaint,
         )
-        if (counter.isNotEmpty()) {
-            canvas.drawText(
-                counter,
-                contentRight,
-                heightPx * COUNTER_BASELINE_HEIGHT_FRACTION,
-                counterPaint,
-            )
-        }
 
         val timeWidth = detailPaint.measureText(item.time)
         val roomMaxWidth = (
-            contentRight - left - timeWidth - widthPx * DETAIL_GAP_WIDTH_FRACTION
-        ).coerceAtLeast(widthPx * MIN_TEXT_WIDTH_FRACTION)
+            detailRight - left - timeWidth - widthPx * DETAIL_GAP_WIDTH_FRACTION
+        ).coerceAtLeast(widthPx * MIN_DETAIL_WIDTH_FRACTION)
         val room = TextUtils.ellipsize(
             item.room,
             detailPaint,
@@ -211,7 +195,7 @@ private class ScheduleWidgetFactory(
         if (item.time.isNotBlank()) {
             canvas.drawText(
                 item.time,
-                contentRight - timeWidth,
+                detailRight - timeWidth,
                 heightPx * DETAIL_BASELINE_HEIGHT_FRACTION,
                 detailPaint,
             )
@@ -378,13 +362,13 @@ private const val DEFAULT_WIDGET_HEIGHT_DP = 64
 
 private const val CORNER_RADIUS_HEIGHT_FRACTION = 0.28f
 private const val CONTENT_LEFT_FRACTION = 0.095f
-private const val CONTENT_RIGHT_FRACTION = 0.79f
-private const val SUBJECT_TEXT_HEIGHT_FRACTION = 0.245f
-private const val DETAIL_TEXT_HEIGHT_FRACTION = 0.165f
-private const val COUNTER_TEXT_HEIGHT_FRACTION = 0.135f
-private const val SUBJECT_BASELINE_HEIGHT_FRACTION = 0.42f
-private const val COUNTER_BASELINE_HEIGHT_FRACTION = 0.31f
-private const val DETAIL_BASELINE_HEIGHT_FRACTION = 0.76f
-private const val COUNTER_GAP_WIDTH_FRACTION = 0.018f
-private const val DETAIL_GAP_WIDTH_FRACTION = 0.025f
-private const val MIN_TEXT_WIDTH_FRACTION = 0.12f
+private const val TITLE_RIGHT_FRACTION = 0.86f
+private const val DETAIL_RIGHT_FRACTION = 0.92f
+private const val SUBJECT_TEXT_HEIGHT_FRACTION = 0.205f
+private const val DETAIL_TEXT_HEIGHT_FRACTION = 0.14f
+private const val SUBJECT_BASELINE_HEIGHT_FRACTION = 0.43f
+private const val DETAIL_BASELINE_HEIGHT_FRACTION = 0.77f
+private const val DETAIL_GAP_WIDTH_FRACTION = 0.03f
+private const val MIN_TITLE_WIDTH_FRACTION = 0.30f
+private const val MIN_DETAIL_WIDTH_FRACTION = 0.12f
+private const val MIN_SUBJECT_FIT_SCALE = 0.78f
