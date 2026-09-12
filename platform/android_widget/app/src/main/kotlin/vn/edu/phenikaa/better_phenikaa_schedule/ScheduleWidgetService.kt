@@ -138,8 +138,8 @@ private class ScheduleWidgetFactory(
         )
 
         // Every coordinate is proportional to the real frame supplied by the host.
-        // The left inset keeps the original visual breathing room while the right
-        // side is now used by the content instead of being reserved for a counter.
+        // Keep the visual spacing from the approved layout while leaving the far
+        // lower-right edge clear for the StackView peek mask in schedule_widget.xml.
         val left = widthPx * CONTENT_LEFT_FRACTION
         val titleRight = widthPx * TITLE_RIGHT_FRACTION
         val detailRight = widthPx * DETAIL_RIGHT_FRACTION
@@ -363,10 +363,10 @@ private const val DEFAULT_WIDGET_HEIGHT_DP = 64
 private const val CORNER_RADIUS_HEIGHT_FRACTION = 0.28f
 private const val CONTENT_LEFT_FRACTION = 0.095f
 private const val TITLE_RIGHT_FRACTION = 0.86f
-private const val DETAIL_RIGHT_FRACTION = 0.92f
+private const val DETAIL_RIGHT_FRACTION = 0.86f
 private const val SUBJECT_TEXT_HEIGHT_FRACTION = 0.205f
 private const val DETAIL_TEXT_HEIGHT_FRACTION = 0.14f
-private const val SUBJECT_BASELINE_HEIGHT_FRACTION = 0.43f
+private const val SUBJECT_BASELINE_HEIGHT_FRACTION = 0.39f
 private const val DETAIL_BASELINE_HEIGHT_FRACTION = 0.77f
 private const val DETAIL_GAP_WIDTH_FRACTION = 0.03f
 private const val MIN_TITLE_WIDTH_FRACTION = 0.30f
