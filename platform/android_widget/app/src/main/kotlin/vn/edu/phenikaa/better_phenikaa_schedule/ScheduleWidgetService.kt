@@ -20,7 +20,6 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.min
 
 class ScheduleWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
@@ -120,53 +119,47 @@ private class ScheduleWidgetFactory(
         val height = (heightDp * density).toInt().coerceAtLeast(1)
         val horizontal = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(horizontal)
+        val widthPx = width.toFloat()
+        val heightPx = height.toFloat()
 
         val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 0f,
                 0f,
-                width.toFloat(),
+                widthPx,
                 0f,
                 0xFF173A8E.toInt(),
                 0xFF315AB5.toInt(),
                 Shader.TileMode.CLAMP,
             )
         }
-        val radius = min(18f * density, height * 0.30f)
+        val radius = heightPx * CORNER_RADIUS_HEIGHT_FRACTION
         canvas.drawRoundRect(
-            RectF(0f, 0f, width.toFloat(), height.toFloat()),
+            RectF(0f, 0f, widthPx, heightPx),
             radius,
             radius,
             backgroundPaint,
         )
 
-        // Preserve the existing 250x64 visual design, but scale text uniformly from
-        // both dimensions of the real launcher frame. Keep the horizontal content
-        // inset fixed at the original 18dp so wide/narrow launchers retain the same
-        // comfortable distance from the rounded card edge as the original design.
-        val contentScale = min(
-            widthDp / DESIGN_WIDGET_WIDTH_DP,
-            heightDp / DESIGN_WIDGET_HEIGHT_DP,
-        ).coerceIn(MIN_CONTENT_SCALE, MAX_CONTENT_SCALE)
-
-        val left = BASE_HORIZONTAL_INSET_DP * density
-        val right = width - left
-        val calendarSafeInset = BASE_CALENDAR_SAFE_INSET_DP * density * contentScale
-        val contentRight = (right - calendarSafeInset)
-            .coerceAtLeast(left + 92f * density * contentScale)
+        // StackView applies its own perspective transform to collection children.
+        // Place the actual content using proportions of the rendered frame so the
+        // visible inset remains consistent across launcher grids and resolutions.
+        // The root card, colours and visual hierarchy stay unchanged.
+        val left = widthPx * CONTENT_LEFT_FRACTION
+        val contentRight = widthPx * CONTENT_RIGHT_FRACTION
 
         val subjectPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
-            textSize = BASE_SUBJECT_TEXT_DP * density * contentScale
+            textSize = heightPx * SUBJECT_TEXT_HEIGHT_FRACTION
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val detailPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFDDE8FF.toInt()
-            textSize = BASE_DETAIL_TEXT_DP * density * contentScale
+            textSize = heightPx * DETAIL_TEXT_HEIGHT_FRACTION
         }
         val counterPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFBFD0F5.toInt()
-            textSize = BASE_COUNTER_TEXT_DP * density * contentScale
+            textSize = heightPx * COUNTER_TEXT_HEIGHT_FRACTION
             textAlign = Paint.Align.RIGHT
         }
 
@@ -174,32 +167,54 @@ private class ScheduleWidgetFactory(
         val counterWidth = if (counter.isEmpty()) {
             0f
         } else {
-            counterPaint.measureText(counter) + 8f * density * contentScale
+            counterPaint.measureText(counter) + widthPx * COUNTER_GAP_WIDTH_FRACTION
         }
         val subject = TextUtils.ellipsize(
             item.subject,
             subjectPaint,
-            (contentRight - left - counterWidth).coerceAtLeast(36f * density),
+            (contentRight - left - counterWidth).coerceAtLeast(
+                widthPx * MIN_TEXT_WIDTH_FRACTION,
+            ),
             TextUtils.TruncateAt.END,
         )
-        canvas.drawText(subject.toString(), left, height * 0.42f, subjectPaint)
+        canvas.drawText(
+            subject.toString(),
+            left,
+            heightPx * SUBJECT_BASELINE_HEIGHT_FRACTION,
+            subjectPaint,
+        )
         if (counter.isNotEmpty()) {
-            canvas.drawText(counter, contentRight, height * 0.31f, counterPaint)
+            canvas.drawText(
+                counter,
+                contentRight,
+                heightPx * COUNTER_BASELINE_HEIGHT_FRACTION,
+                counterPaint,
+            )
         }
 
         val timeWidth = detailPaint.measureText(item.time)
         val roomMaxWidth = (
-            contentRight - left - timeWidth - 12f * density * contentScale
-        ).coerceAtLeast(32f * density)
+            contentRight - left - timeWidth - widthPx * DETAIL_GAP_WIDTH_FRACTION
+        ).coerceAtLeast(widthPx * MIN_TEXT_WIDTH_FRACTION)
         val room = TextUtils.ellipsize(
             item.room,
             detailPaint,
             roomMaxWidth,
             TextUtils.TruncateAt.END,
         )
-        canvas.drawText(room.toString(), left, height * 0.76f, detailPaint)
+        canvas.drawText(
+            room.toString(),
+            left,
+            heightPx * DETAIL_BASELINE_HEIGHT_FRACTION,
+            detailPaint,
+        )
         if (item.time.isNotBlank()) {
-            canvas.drawText(item.time, contentRight - timeWidth, height * 0.76f, detailPaint)
+            canvas.drawText(
+                item.time,
+                contentRight - timeWidth,
+                heightPx * DETAIL_BASELINE_HEIGHT_FRACTION,
+                detailPaint,
+            )
         }
 
         return horizontal
@@ -360,12 +375,16 @@ private const val DATE_PATTERN = "yyyy-MM-dd"
 private const val DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss"
 private const val DEFAULT_WIDGET_WIDTH_DP = 320
 private const val DEFAULT_WIDGET_HEIGHT_DP = 64
-private const val DESIGN_WIDGET_WIDTH_DP = 250f
-private const val DESIGN_WIDGET_HEIGHT_DP = 64f
-private const val MIN_CONTENT_SCALE = 0.78f
-private const val MAX_CONTENT_SCALE = 1.35f
-private const val BASE_HORIZONTAL_INSET_DP = 18f
-private const val BASE_CALENDAR_SAFE_INSET_DP = 48f
-private const val BASE_SUBJECT_TEXT_DP = 16f
-private const val BASE_DETAIL_TEXT_DP = 11f
-private const val BASE_COUNTER_TEXT_DP = 9f
+
+private const val CORNER_RADIUS_HEIGHT_FRACTION = 0.28f
+private const val CONTENT_LEFT_FRACTION = 0.095f
+private const val CONTENT_RIGHT_FRACTION = 0.79f
+private const val SUBJECT_TEXT_HEIGHT_FRACTION = 0.245f
+private const val DETAIL_TEXT_HEIGHT_FRACTION = 0.165f
+private const val COUNTER_TEXT_HEIGHT_FRACTION = 0.135f
+private const val SUBJECT_BASELINE_HEIGHT_FRACTION = 0.42f
+private const val COUNTER_BASELINE_HEIGHT_FRACTION = 0.31f
+private const val DETAIL_BASELINE_HEIGHT_FRACTION = 0.76f
+private const val COUNTER_GAP_WIDTH_FRACTION = 0.018f
+private const val DETAIL_GAP_WIDTH_FRACTION = 0.025f
+private const val MIN_TEXT_WIDTH_FRACTION = 0.12f
