@@ -140,16 +140,16 @@ private class ScheduleWidgetFactory(
             backgroundPaint,
         )
 
-        // Preserve the existing 250x64 visual design, but scale it uniformly from
-        // both dimensions of the real launcher frame. A wider widget gains usable
-        // horizontal room without making text oversized; a narrow widget scales its
-        // content down before ellipsizing instead of clipping or overlapping.
+        // Preserve the existing 250x64 visual design, but scale text uniformly from
+        // both dimensions of the real launcher frame. Keep the horizontal content
+        // inset fixed at the original 18dp so wide/narrow launchers retain the same
+        // comfortable distance from the rounded card edge as the original design.
         val contentScale = min(
             widthDp / DESIGN_WIDGET_WIDTH_DP,
             heightDp / DESIGN_WIDGET_HEIGHT_DP,
         ).coerceIn(MIN_CONTENT_SCALE, MAX_CONTENT_SCALE)
 
-        val left = BASE_HORIZONTAL_INSET_DP * density * contentScale
+        val left = BASE_HORIZONTAL_INSET_DP * density
         val right = width - left
         val calendarSafeInset = BASE_CALENDAR_SAFE_INSET_DP * density * contentScale
         val contentRight = (right - calendarSafeInset)
