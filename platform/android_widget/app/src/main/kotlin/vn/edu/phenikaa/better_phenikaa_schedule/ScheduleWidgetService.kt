@@ -20,7 +20,7 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.max
+import kotlin.math.min
 
 class ScheduleWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
@@ -132,7 +132,7 @@ private class ScheduleWidgetFactory(
                 Shader.TileMode.CLAMP,
             )
         }
-        val radius = height * 0.28f
+        val radius = min(18f * density, height * 0.30f)
         canvas.drawRoundRect(
             RectF(0f, 0f, width.toFloat(), height.toFloat()),
             radius,
@@ -140,28 +140,33 @@ private class ScheduleWidgetFactory(
             backgroundPaint,
         )
 
-        // Size every visual element from the actual widget frame. Do not assume a
-        // specific launcher grid width: a 1-row widget can be narrow or span the
-        // entire screen and its contents should retain the same proportions.
-        val horizontalInset = max(width * 0.035f, 10f * density)
-        val left = horizontalInset
-        val right = width - horizontalInset
-        val calendarSafeInset = max(height * 0.62f, 30f * density)
+        // Preserve the existing 250x64 visual design, but scale it uniformly from
+        // both dimensions of the real launcher frame. A wider widget gains usable
+        // horizontal room without making text oversized; a narrow widget scales its
+        // content down before ellipsizing instead of clipping or overlapping.
+        val contentScale = min(
+            widthDp / DESIGN_WIDGET_WIDTH_DP,
+            heightDp / DESIGN_WIDGET_HEIGHT_DP,
+        ).coerceIn(MIN_CONTENT_SCALE, MAX_CONTENT_SCALE)
+
+        val left = BASE_HORIZONTAL_INSET_DP * density * contentScale
+        val right = width - left
+        val calendarSafeInset = BASE_CALENDAR_SAFE_INSET_DP * density * contentScale
         val contentRight = (right - calendarSafeInset)
-            .coerceAtLeast(left + width * 0.40f)
+            .coerceAtLeast(left + 92f * density * contentScale)
 
         val subjectPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
-            textSize = height * 0.245f
+            textSize = BASE_SUBJECT_TEXT_DP * density * contentScale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val detailPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFDDE8FF.toInt()
-            textSize = height * 0.165f
+            textSize = BASE_DETAIL_TEXT_DP * density * contentScale
         }
         val counterPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFBFD0F5.toInt()
-            textSize = height * 0.135f
+            textSize = BASE_COUNTER_TEXT_DP * density * contentScale
             textAlign = Paint.Align.RIGHT
         }
 
@@ -169,12 +174,12 @@ private class ScheduleWidgetFactory(
         val counterWidth = if (counter.isEmpty()) {
             0f
         } else {
-            counterPaint.measureText(counter) + width * 0.018f
+            counterPaint.measureText(counter) + 8f * density * contentScale
         }
         val subject = TextUtils.ellipsize(
             item.subject,
             subjectPaint,
-            (contentRight - left - counterWidth).coerceAtLeast(width * 0.12f),
+            (contentRight - left - counterWidth).coerceAtLeast(36f * density),
             TextUtils.TruncateAt.END,
         )
         canvas.drawText(subject.toString(), left, height * 0.42f, subjectPaint)
@@ -183,8 +188,9 @@ private class ScheduleWidgetFactory(
         }
 
         val timeWidth = detailPaint.measureText(item.time)
-        val roomMaxWidth = (contentRight - left - timeWidth - width * 0.025f)
-            .coerceAtLeast(width * 0.12f)
+        val roomMaxWidth = (
+            contentRight - left - timeWidth - 12f * density * contentScale
+        ).coerceAtLeast(32f * density)
         val room = TextUtils.ellipsize(
             item.room,
             detailPaint,
@@ -352,5 +358,14 @@ private const val SNAPSHOT_PREFS = "FlutterSharedPreferences"
 private const val SNAPSHOT_KEY = "flutter.better_phenikaa_snapshot_v1"
 private const val DATE_PATTERN = "yyyy-MM-dd"
 private const val DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss"
-private const val DEFAULT_WIDGET_WIDTH_DP = 250
+private const val DEFAULT_WIDGET_WIDTH_DP = 320
 private const val DEFAULT_WIDGET_HEIGHT_DP = 64
+private const val DESIGN_WIDGET_WIDTH_DP = 250f
+private const val DESIGN_WIDGET_HEIGHT_DP = 64f
+private const val MIN_CONTENT_SCALE = 0.78f
+private const val MAX_CONTENT_SCALE = 1.35f
+private const val BASE_HORIZONTAL_INSET_DP = 18f
+private const val BASE_CALENDAR_SAFE_INSET_DP = 48f
+private const val BASE_SUBJECT_TEXT_DP = 16f
+private const val BASE_DETAIL_TEXT_DP = 11f
+private const val BASE_COUNTER_TEXT_DP = 9f
