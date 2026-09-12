@@ -3,7 +3,11 @@
     android:id="@+id/widget_slide_item"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/schedule_widget_background">
+    android:background="@drawable/schedule_widget_background"
+    android:clipChildren="true"
+    android:clipToOutline="true"
+    android:clipToPadding="true"
+    android:outlineProvider="background">
 
     <ImageView
         android:id="@+id/widget_slide_image"
