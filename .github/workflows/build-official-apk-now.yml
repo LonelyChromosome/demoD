@@ -58,7 +58,10 @@ jobs:
           set -euo pipefail
           grep -q '^version: 1.0.3+4$' pubspec.yaml
           grep -q 'android:label="Better Phenikaa App"' android/app/src/main/AndroidManifest.xml
-          grep -q 'android:icon="@drawable/ic_launcher_better_phenikaa"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:icon="@mipmap/ic_launcher"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@mipmap/ic_launcher_round"' android/app/src/main/AndroidManifest.xml
+          test -s android/app/src/main/res/drawable-nodpi/ic_launcher_foreground.png
+          test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
           grep -q 'compileSdk = 37' android/app/build.gradle.kts
           grep -q 'com.android.application") version "9.1.1"' android/settings.gradle.kts
