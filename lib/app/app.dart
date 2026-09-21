@@ -1,36 +1,26 @@
 import 'dart:async';
 
-import 'package:better_phenikaa_schedule/features/qldt_intake/qldt_login.dart';
-import 'package:better_phenikaa_schedule/features/qldt_intake/qldt_models.dart';
-import 'package:flutter/foundation.dart';
+import 'package:better_phenikaa_schedule/core/presentation/shared_widgets.dart';
+import 'package:better_phenikaa_schedule/core/utils/date_time_formatters.dart';
+import 'package:better_phenikaa_schedule/features/exams/presentation/exam_screen.dart';
+import 'package:better_phenikaa_schedule/features/qldt_login/presentation/login_screen.dart';
+import 'package:better_phenikaa_schedule/features/qldt_login/presentation/qldt_login.dart';
+import 'package:better_phenikaa_schedule/features/schedule/presentation/schedule_screen.dart';
+import 'package:better_phenikaa_schedule/features/settings/presentation/account_screen.dart';
+import 'package:better_phenikaa_schedule/features/sync/application/schedule_sync_coordinator.dart';
+import 'package:better_phenikaa_schedule/features/sync/domain/schedule_snapshot.dart';
+import 'package:better_phenikaa_schedule/features/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:home_widget/home_widget.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class BetterPhenikaaScheduleApp extends StatelessWidget {
   const new({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFF12358B);
     return MaterialApp(
       title: 'Better Phenikaa App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF7F9FD),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primary,
-          primary: primary,
-          surface: Colors.white,
-        ),
-        fontFamily: 'Roboto',
-        cardTheme: const CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          margin: EdgeInsets.zero,
-        ),
-      ),
+      theme: buildAppTheme(),
       home: const _AppRoot(),
     );
   }
@@ -46,12 +36,12 @@ class _AppRoot extends StatefulWidget {
 }
 
 class _AppRootState extends State<_AppRoot> {
-  static const _storageKey = 'better_phenikaa_snapshot_v1';
+  static const _syncCoordinator = ScheduleSyncCoordinator();
 
   bool _booting = true;
   bool _syncing = false;
   bool _panelOpen = false;
-  ImportedScheduleData? _data;
+  ScheduleSnapshot? _data;
   _AppPage _page = _AppPage.timetable;
   DateTime _selectedDate = DateTime.now();
   bool _showPastExams = false;
@@ -65,10 +55,8 @@ class _AppRootState extends State<_AppRoot> {
 
   Future<void> _restore() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_storageKey);
-      if (raw != null && raw.isNotEmpty) {
-        final data = ImportedScheduleData.decode(raw);
+      final data = await _syncCoordinator.restore();
+      if (data != null) {
         _data = data;
         _selectedDate = _initialDateFor(data);
       }
@@ -79,40 +67,6 @@ class _AppRootState extends State<_AppRoot> {
     if (mounted) {
       setState(() => _booting = false);
     }
-  }
-
-  Future<void> _save(ImportedScheduleData data) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey, data.encode());
-    await _publishWidget(data);
-  }
-
-  Future<void> _publishWidget(ImportedScheduleData data) async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      return;
-    }
-    final next = _nextClass(data);
-    await HomeWidget.saveWidgetData<String>(
-      'subjectName',
-      next?.subjectName ?? 'Không có lịch học sắp tới',
-    );
-    await HomeWidget.saveWidgetData<String>('room', next?.room ?? '');
-    await HomeWidget.saveWidgetData<String>(
-      'time',
-      next == null ? '' : '${_time(next.startAt)} - ${_time(next.endAt)}',
-    );
-    await HomeWidget.updateWidget(
-      name: 'ScheduleWidgetProvider',
-      androidName: 'ScheduleWidgetProvider',
-    );
-  }
-
-  ScheduleRecord? _nextClass(ImportedScheduleData data) {
-    final now = DateTime.now();
-    final future =
-        data.classes.where((item) => !item.endAt.isBefore(now)).toList()
-          ..sort((a, b) => a.startAt.compareTo(b.startAt));
-    return future.isEmpty ? null : future.first;
   }
 
   Future<void> _loginOrSync() async {
@@ -136,16 +90,15 @@ class _AppRootState extends State<_AppRoot> {
       _panelOpen = false;
     });
     try {
-      final imported = await openQldtLogin(context);
-      if (imported != null) {
-        await _save(imported);
-        if (mounted) {
-          setState(() {
-            _data = imported;
-            _selectedDate = _initialDateFor(imported);
-            _page = _AppPage.timetable;
-          });
-        }
+      final imported = await _syncCoordinator.synchronize(
+        () => openQldtLogin(context),
+      );
+      if (imported != null && mounted) {
+        setState(() {
+          _data = imported;
+          _selectedDate = _initialDateFor(imported);
+          _page = _AppPage.timetable;
+        });
       }
     } on Object catch (error) {
       if (mounted) {
@@ -159,41 +112,36 @@ class _AppRootState extends State<_AppRoot> {
   }
 
   Future<void> _logout() async {
-    await clearQldtSession();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_storageKey);
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      await HomeWidget.saveWidgetData<String>('subjectName', '');
-      await HomeWidget.saveWidgetData<String>('room', '');
-      await HomeWidget.saveWidgetData<String>('time', '');
-      await HomeWidget.updateWidget(
-        name: 'ScheduleWidgetProvider',
-        androidName: 'ScheduleWidgetProvider',
-      );
-    }
-    if (mounted) {
-      setState(() {
-        _data = null;
-        _panelOpen = false;
-        _page = _AppPage.timetable;
-        _errorMessage = null;
-      });
+    try {
+      await _syncCoordinator.clear(clearSession: clearQldtSession);
+      if (mounted) {
+        setState(() {
+          _data = null;
+          _panelOpen = false;
+          _page = _AppPage.timetable;
+          _errorMessage = null;
+        });
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Đăng xuất thất bại: $error');
+      }
     }
   }
 
-  DateTime _initialDateFor(ImportedScheduleData data) {
-    final today = _dateOnly(DateTime.now());
-    if (data.classes.any((record) => _sameDay(record.startAt, today))) {
+  DateTime _initialDateFor(ScheduleSnapshot data) {
+    final today = dateOnly(DateTime.now());
+    if (data.classes.any((record) => isSameDay(record.startAt, today))) {
       return today;
     }
     final future =
         data.classes.where((record) => !record.startAt.isBefore(today)).toList()
           ..sort((a, b) => a.startAt.compareTo(b.startAt));
     if (future.isNotEmpty) {
-      return _dateOnly(future.first.startAt);
+      return dateOnly(future.first.startAt);
     }
     return data.classes.isNotEmpty
-        ? _dateOnly(data.classes.last.startAt)
+        ? dateOnly(data.classes.last.startAt)
         : today;
   }
 
@@ -251,7 +199,7 @@ class _AppRootState extends State<_AppRoot> {
                       child: _booting
                           ? const _SplashScreen()
                           : _data == null
-                          ? _LoginScreen(
+                          ? QldtLoginScreen(
                               onLogin: _loginOrSync,
                               supportsLive: supportsLiveQldtLogin,
                             )
@@ -269,7 +217,7 @@ class _AppRootState extends State<_AppRoot> {
                               onSync: _loginOrSync,
                               onLogout: _logout,
                               onDateChanged: (date) => setState(
-                                () => _selectedDate = _dateOnly(date),
+                                () => _selectedDate = dateOnly(date),
                               ),
                               onExamTabChanged: (past) =>
                                   setState(() => _showPastExams = past),
@@ -293,11 +241,11 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _PhoneSurface(
+    return const PhoneSurface(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          _AppMark(size: 76),
+          AppMark(size: 76),
           SizedBox(height: 26),
           Text(
             'Better Phenikaa App',
@@ -333,101 +281,6 @@ class _SplashScreen extends StatelessWidget {
   }
 }
 
-class _LoginScreen extends StatelessWidget {
-  const new({required this.onLogin, required this.supportsLive});
-
-  final VoidCallback onLogin;
-  final bool supportsLive;
-
-  @override
-  Widget build(BuildContext context) {
-    return _PhoneSurface(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(32, 58, 32, 30),
-        child: Column(
-          children: <Widget>[
-            const Spacer(),
-            const _AppMark(size: 62),
-            const SizedBox(height: 22),
-            const Text(
-              'Chào mừng bạn!',
-              style: TextStyle(
-                color: Color(0xFF102B73),
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Kết nối với QLĐT để xem lịch học và lịch thi của bạn',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF67789E),
-                height: 1.55,
-                fontSize: 15,
-              ),
-            ),
-            const SizedBox(height: 38),
-            SizedBox(
-              width: double.infinity,
-              height: 62,
-              child: FilledButton(
-                onPressed: onLogin,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF143B98),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    const _MicrosoftMark(),
-                    const SizedBox(width: 14),
-                    Text(
-                      supportsLive
-                          ? 'Đăng nhập QLĐT\n(Microsoft)'
-                          : 'Đăng nhập QLĐT thật\n(Android APK)',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 22),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(Icons.lock_outline, size: 17, color: Color(0xFF8290AF)),
-                SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    'Dữ liệu chỉ lưu cục bộ trên thiết bị của bạn',
-                    style: TextStyle(color: Color(0xFF8290AF), fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(flex: 2),
-            const Text(
-              'Better Phenikaa App',
-              style: TextStyle(
-                color: Color(0xFF9AA5BD),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _MainShell extends StatelessWidget {
   const new({
     required this.data,
@@ -446,7 +299,7 @@ class _MainShell extends StatelessWidget {
     required this.onDismissError,
   });
 
-  final ImportedScheduleData data;
+  final ScheduleSnapshot data;
   final _AppPage page;
   final DateTime selectedDate;
   final bool showPastExams;
@@ -464,24 +317,24 @@ class _MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final child = switch (page) {
-      _AppPage.timetable => _TimetableScreen(
+      _AppPage.timetable => ScheduleScreen(
         data: data,
         selectedDate: selectedDate,
         onDateChanged: onDateChanged,
       ),
-      _AppPage.exam => _ExamScreen(
+      _AppPage.exam => ExamScreen(
         data: data,
         showPast: showPastExams,
         onTabChanged: onExamTabChanged,
       ),
-      _AppPage.account => _AccountScreen(
+      _AppPage.account => AccountScreen(
         data: data,
         onLogout: onLogout,
         onSync: onSync,
       ),
     };
 
-    return _PhoneSurface(
+    return PhoneSurface(
       child: Stack(
         children: <Widget>[
           Positioned.fill(child: child),
@@ -544,873 +397,6 @@ class _MainShell extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _TimetableScreen extends StatelessWidget {
-  const new({
-    required this.data,
-    required this.selectedDate,
-    required this.onDateChanged,
-  });
-
-  final ImportedScheduleData data;
-  final DateTime selectedDate;
-  final ValueChanged<DateTime> onDateChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = data.classes
-        .where((record) => _sameDay(record.startAt, selectedDate))
-        .toList(growable: false);
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragEnd: (details) {
-        final velocity = details.primaryVelocity ?? 0;
-        if (velocity.abs() < 180) {
-          return;
-        }
-        onDateChanged(selectedDate.add(Duration(days: velocity < 0 ? 1 : -1)));
-      },
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _TopTitle(
-              title: 'Lịch học',
-              badge: null,
-              onCalendarTap: () =>
-                  _showCalendarPicker(context, selectedDate, onDateChanged),
-            ),
-            const SizedBox(height: 24),
-            _DateNavigator(
-              date: selectedDate,
-              onTap: () =>
-                  _showCalendarPicker(context, selectedDate, onDateChanged),
-              onPrevious: () =>
-                  onDateChanged(selectedDate.subtract(const Duration(days: 1))),
-              onNext: () =>
-                  onDateChanged(selectedDate.add(const Duration(days: 1))),
-            ),
-            const SizedBox(height: 18),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 320),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, animation) {
-                  final slide = Tween<Offset>(
-                    begin: const Offset(.14, 0),
-                    end: Offset.zero,
-                  ).animate(animation);
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(position: slide, child: child),
-                  );
-                },
-                child: KeyedSubtree(
-                  key: ValueKey<String>(
-                    '${selectedDate.year}-${selectedDate.month}-${selectedDate.day}',
-                  ),
-                  child: items.isEmpty
-                      ? const _EmptyState(
-                          icon: Icons.event_available_outlined,
-                          title: 'Không có lịch học',
-                          message: 'Vuốt sang ngày khác, bấm ngày hoặc biểu tượng lịch để chọn nhanh.',
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.only(bottom: 82),
-                          itemCount: items.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(height: 14),
-                          itemBuilder: (context, index) => _ScheduleCard(
-                            item: items[index],
-                            accent: _accentFor(index),
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ExamScreen extends StatelessWidget {
-  const new({
-    required this.data,
-    required this.showPast,
-    required this.onTabChanged,
-  });
-
-  final ImportedScheduleData data;
-  final bool showPast;
-  final ValueChanged<bool> onTabChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final referenceNow = DateTime.now();
-    final exams = data.exams
-        .where((record) {
-          return showPast
-              ? record.endAt.isBefore(referenceNow)
-              : !record.endAt.isBefore(referenceNow);
-        })
-        .toList(growable: false);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _TopTitle(title: 'Lịch thi', badge: null),
-          const SizedBox(height: 20),
-          _SegmentTabs(showPast: showPast, onChanged: onTabChanged),
-          const SizedBox(height: 18),
-          Expanded(
-            child: exams.isEmpty
-                ? _EmptyState(
-                    icon: Icons.assignment_turned_in_outlined,
-                    title: showPast
-                        ? 'Chưa có kỳ thi đã qua'
-                        : 'Chưa có lịch thi sắp tới',
-                    message: 'Dữ liệu sẽ được cập nhật sau lần đồng bộ QLĐT tiếp theo.',
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.only(bottom: 82),
-                    itemCount: exams.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) =>
-                        _ExamCard(item: exams[index]),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AccountScreen extends StatelessWidget {
-  const new({required this.data, required this.onLogout, required this.onSync});
-
-  final ImportedScheduleData data;
-  final VoidCallback onLogout;
-  final VoidCallback onSync;
-
-  @override
-  Widget build(BuildContext context) {
-    final next = _nextForAccount(data);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _TopTitle(title: 'Tài khoản', badge: null),
-          const SizedBox(height: 30),
-          Row(
-            children: <Widget>[
-              const CircleAvatar(
-                radius: 38,
-                backgroundColor: Color(0xFF3F76DC),
-                child: Icon(
-                  Icons.person_rounded,
-                  color: Colors.white,
-                  size: 48,
-                ),
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Text(
-                  data.displayName.isEmpty
-                      ? 'Người dùng QLĐT'
-                      : data.displayName,
-                  style: const TextStyle(
-                    color: Color(0xFF102B73),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 30),
-          _InfoPanel(data: data),
-          const SizedBox(height: 18),
-          if (next != null) _WidgetPreview(item: next),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: onSync,
-              icon: const Icon(Icons.sync_rounded),
-              label: const Text('Đồng bộ lại QLĐT'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: onLogout,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFE55656),
-                side: const BorderSide(color: Color(0xFFFFB7B7)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.logout_rounded, size: 19),
-              label: const Text(
-                'Đăng xuất',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-          const SizedBox(height: 76),
-        ],
-      ),
-    );
-  }
-
-  static ScheduleRecord? _nextForAccount(ImportedScheduleData data) {
-    if (data.classes.isEmpty) {
-      return null;
-    }
-    final reference = DateTime.now();
-    final items =
-        data.classes
-            .where((record) => !record.endAt.isBefore(reference))
-            .toList()
-          ..sort((a, b) => a.startAt.compareTo(b.startAt));
-    return items.isEmpty ? null : items.first;
-  }
-}
-
-class _TopTitle extends StatelessWidget {
-  const new({required this.title, this.badge, this.onCalendarTap});
-
-  final String title;
-  final String? badge;
-  final VoidCallback? onCalendarTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF102B73),
-            fontSize: 25,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        if (badge != null) ...<Widget>[
-          const SizedBox(width: 9),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE9F0FF),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              badge!,
-              style: const TextStyle(
-                color: Color(0xFF1747B5),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-        const Spacer(),
-        if (onCalendarTap == null)
-          const Icon(Icons.calendar_month_outlined, color: Color(0xFF1747B5))
-        else
-          IconButton.filledTonal(
-            tooltip: 'Chọn ngày',
-            onPressed: onCalendarTap,
-            style: IconButton.styleFrom(
-              foregroundColor: const Color(0xFF1747B5),
-              backgroundColor: const Color(0xFFEEF4FF),
-            ),
-            icon: const Icon(Icons.calendar_month_outlined),
-          ),
-      ],
-    );
-  }
-}
-
-class _DateNavigator extends StatelessWidget {
-  const new({
-    required this.date,
-    required this.onTap,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final DateTime date;
-  final VoidCallback onTap;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        IconButton(
-          onPressed: onPrevious,
-          icon: const Icon(Icons.chevron_left_rounded),
-        ),
-        Expanded(
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(18),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Flexible(
-                    child: Text(
-                      _dateLabel(date),
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF17367E),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  const Icon(
-                    Icons.expand_more_rounded,
-                    size: 18,
-                    color: Color(0xFF5D74A7),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        IconButton(
-          onPressed: onNext,
-          icon: const Icon(Icons.chevron_right_rounded),
-        ),
-      ],
-    );
-  }
-}
-
-Future<void> _showCalendarPicker(
-  BuildContext context,
-  DateTime selectedDate,
-  ValueChanged<DateTime> onDateChanged,
-) async {
-  var draft = _dateOnly(selectedDate);
-  final picked = await showModalBottomSheet<DateTime>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: false,
-    backgroundColor: Colors.transparent,
-    barrierColor: const Color(0x660B2259),
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setModalState) {
-          return TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: .94, end: 1),
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutBack,
-            builder: (context, value, child) => Transform.scale(
-              alignment: Alignment.bottomCenter,
-              scale: value,
-              child: child,
-            ),
-            child: SafeArea(
-              top: false,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: Color(0x2510245A),
-                      blurRadius: 28,
-                      offset: Offset(0, -6),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Container(
-                      width: 42,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD7DFEE),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                    Row(
-                      children: <Widget>[
-                        const Expanded(
-                          child: Text(
-                            'Chọn ngày xem lịch',
-                            style: TextStyle(
-                              color: Color(0xFF102B73),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => setModalState(
-                            () => draft = _dateOnly(DateTime.now()),
-                          ),
-                          child: const Text('Hôm nay'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Theme(
-                      data: Theme.of(context).copyWith(
-                        colorScheme: Theme.of(context).colorScheme.copyWith(
-                          primary: const Color(0xFF1747B5),
-                          onPrimary: Colors.white,
-                          surface: Colors.white,
-                        ),
-                      ),
-                      child: CalendarDatePicker(
-                        initialDate: draft,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2035, 12, 31),
-                        onDateChanged: (value) =>
-                            setModalState(() => draft = _dateOnly(value)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: FilledButton.icon(
-                        onPressed: () => Navigator.of(context).pop(draft),
-                        icon: const Icon(Icons.check_rounded),
-                        label: Text('Xem ${_dateLabel(draft)}'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    },
-  );
-  if (picked != null) {
-    onDateChanged(_dateOnly(picked));
-  }
-}
-
-class _ScheduleCard extends StatelessWidget {
-  const new({required this.item, required this.accent});
-
-  final ScheduleRecord item;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 106),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x0F193B80),
-            blurRadius: 18,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 4,
-            decoration: BoxDecoration(
-              color: accent,
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(14),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Text(
-              _time(item.startAt),
-              style: const TextStyle(
-                color: Color(0xFF173A87),
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(4, 14, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Text(
-                    item.subjectName,
-                    style: const TextStyle(
-                      color: Color(0xFF18336F),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
-                  ),
-                  if (item.room.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 8),
-                    _MetaLine(
-                      icon: Icons.location_on_outlined,
-                      text: item.room,
-                    ),
-                  ],
-                  const SizedBox(height: 5),
-                  _MetaLine(
-                    icon: Icons.access_time_rounded,
-                    text: '${_time(item.startAt)} - ${_time(item.endAt)}',
-                  ),
-                  if (item.periodStart != null &&
-                      item.periodEnd != null) ...<Widget>[
-                    const SizedBox(height: 5),
-                    _MetaLine(
-                      icon: Icons.menu_book_outlined,
-                      text: 'Tiết ${item.periodStart} - ${item.periodEnd}',
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ExamCard extends StatelessWidget {
-  const new({required this.item});
-
-  final ScheduleRecord item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(13),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x0E193B80),
-            blurRadius: 16,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 58,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5FF),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              children: <Widget>[
-                Text(
-                  item.startAt.day.toString().padLeft(2, '0'),
-                  style: const TextStyle(
-                    color: Color(0xFF173A87),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(
-                  'THG ${item.startAt.month}',
-                  style: const TextStyle(
-                    color: Color(0xFF7583A4),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  item.subjectName,
-                  style: const TextStyle(
-                    color: Color(0xFF18336F),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                if (item.examForm.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 4),
-                  Text(
-                    item.examForm,
-                    style: const TextStyle(
-                      color: Color(0xFF8A5A3B),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 7),
-                _MetaLine(
-                  icon: Icons.access_time_rounded,
-                  text: '${_time(item.startAt)} - ${_time(item.endAt)}',
-                ),
-                if (item.room.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 4),
-                  _MetaLine(icon: Icons.location_on_outlined, text: item.room),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SegmentTabs extends StatelessWidget {
-  const new({required this.showPast, required this.onChanged});
-
-  final bool showPast;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 43,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F6FC),
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: _TabButton(
-              label: 'Sắp tới',
-              selected: !showPast,
-              onTap: () => onChanged(false),
-            ),
-          ),
-          Expanded(
-            child: _TabButton(
-              label: 'Đã qua',
-              selected: showPast,
-              onTap: () => onChanged(true),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TabButton extends StatelessWidget {
-  const new({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        alignment: Alignment.center,
-        margin: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
-          boxShadow: selected
-              ? const <BoxShadow>[
-                  BoxShadow(color: Color(0x15193B80), blurRadius: 8),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? const Color(0xFF1747B5) : const Color(0xFF7180A0),
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoPanel extends StatelessWidget {
-  const new({required this.data});
-
-  final ImportedScheduleData data;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFE),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE8EDF7)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Text(
-            'Dữ liệu trên thiết bị',
-            style: TextStyle(
-              color: Color(0xFF18336F),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _AccountInfoRow(
-            label: 'Lịch học',
-            value: '${data.classes.length} mục',
-          ),
-          const SizedBox(height: 8),
-          _AccountInfoRow(label: 'Lịch thi', value: '${data.exams.length} mục'),
-          const SizedBox(height: 8),
-          _AccountInfoRow(
-            label: 'Cập nhật lần cuối',
-            value: '${_dateShort(data.syncedAt)} ${_time(data.syncedAt)}',
-          ),
-          const SizedBox(height: 8),
-          _AccountInfoRow(label: 'Nguồn', value: 'QLĐT Phenikaa'),
-        ],
-      ),
-    );
-  }
-}
-
-class _AccountInfoRow extends StatelessWidget {
-  const new({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(color: Color(0xFF7180A0), fontSize: 12),
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFF244584),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _WidgetPreview extends StatelessWidget {
-  const new({required this.item});
-
-  final ScheduleRecord item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        const Text(
-          'Widget 1×4',
-          style: TextStyle(
-            color: Color(0xFF18336F),
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: <Color>[Color(0xFF173A8E), Color(0xFF315AB5)],
-            ),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                item.subjectName,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 7),
-              Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.location_on_outlined,
-                    color: Colors.white70,
-                    size: 15,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    item.room,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                  const Spacer(),
-                  const Icon(
-                    Icons.access_time_rounded,
-                    color: Colors.white70,
-                    size: 15,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    '${_time(item.startAt)} - ${_time(item.endAt)}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1608,71 +594,6 @@ class _PanelAction extends StatelessWidget {
   }
 }
 
-class _MetaLine extends StatelessWidget {
-  const new({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Icon(icon, size: 15, color: const Color(0xFF6F7FA2)),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: Color(0xFF6F7FA2), fontSize: 12),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const new({required this.icon, required this.title, required this.message});
-
-  final IconData icon;
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(icon, size: 52, color: const Color(0xFFA4B2CE)),
-            const SizedBox(height: 14),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Color(0xFF244584),
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF7A88A7),
-                height: 1.45,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ErrorBanner extends StatelessWidget {
   const new({required this.message, required this.onDismiss});
 
@@ -1707,108 +628,4 @@ class _ErrorBanner extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PhoneSurface extends StatelessWidget {
-  const new({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.white,
-      child: SizedBox.expand(child: child),
-    );
-  }
-}
-
-class _AppMark extends StatelessWidget {
-  const new({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * .2),
-        border: Border.all(color: const Color(0xFF183F9C), width: size * .08),
-      ),
-      child: Icon(
-        Icons.check_rounded,
-        size: size * .62,
-        color: const Color(0xFF183F9C),
-      ),
-    );
-  }
-}
-
-class _MicrosoftMark extends StatelessWidget {
-  const new();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox.square(
-      dimension: 25,
-      child: Wrap(
-        spacing: 2,
-        runSpacing: 2,
-        children: <Widget>[
-          _MsTile(Color(0xFFF25022)),
-          _MsTile(Color(0xFF7FBA00)),
-          _MsTile(Color(0xFF00A4EF)),
-          _MsTile(Color(0xFFFFB900)),
-        ],
-      ),
-    );
-  }
-}
-
-class _MsTile extends StatelessWidget {
-  const new(this.color);
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.square(dimension: 11.5, child: ColoredBox(color: color));
-  }
-}
-
-Color _accentFor(int index) {
-  const accents = <Color>[
-    Color(0xFF4A89FF),
-    Color(0xFF32C489),
-    Color(0xFFFF941A),
-    Color(0xFF8154D9),
-  ];
-  return accents[index % accents.length];
-}
-
-DateTime _dateOnly(DateTime value) =>
-    DateTime(value.year, value.month, value.day);
-
-bool _sameDay(DateTime a, DateTime b) =>
-    a.year == b.year && a.month == b.month && a.day == b.day;
-
-String _time(DateTime value) =>
-    '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
-
-String _dateShort(DateTime value) =>
-    '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
-
-String _dateLabel(DateTime value) {
-  const weekdays = <String>[
-    'Thứ Hai',
-    'Thứ Ba',
-    'Thứ Tư',
-    'Thứ Năm',
-    'Thứ Sáu',
-    'Thứ Bảy',
-    'Chủ Nhật',
-  ];
-  return '${weekdays[value.weekday - 1]}, ${value.day} tháng ${value.month}';
 }

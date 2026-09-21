@@ -5,15 +5,16 @@
 import 'dart:convert';
 import 'dart:html' as html;
 
-import 'package:better_phenikaa_schedule/features/qldt_intake/qldt_models.dart';
+import 'package:better_phenikaa_schedule/features/qldt_login/data/qldt_parser.dart';
+import 'package:better_phenikaa_schedule/features/sync/domain/schedule_snapshot.dart';
 import 'package:flutter/material.dart';
 
 const bool supportsLiveQldtLogin = true;
 
 Future<void> clearQldtSession() async {}
 
-Future<ImportedScheduleData?> openQldtLogin(BuildContext context) {
-  return showDialog<ImportedScheduleData>(
+Future<ScheduleSnapshot?> openQldtLogin(BuildContext context) {
+  return showDialog<ScheduleSnapshot>(
     context: context,
     barrierDismissible: false,
     builder: (_) => const _WebQldtBridgeDialog(),

@@ -71,6 +71,22 @@ if app_kts.exists():
         text,
         count=1,
     )
+    if 'androidx.work:work-runtime-ktx' not in text:
+        text = text.replace(
+            '\nandroid {\n',
+            '\ndependencies {\n'
+            '    implementation("androidx.work:work-runtime-ktx:2.11.2")\n'
+            '    testImplementation("junit:junit:4.13.2")\n'
+            '}\n\nandroid {\n',
+            1,
+        )
+    elif 'junit:junit' not in text:
+        text = text.replace(
+            '\ndependencies {\n',
+            '\ndependencies {\n'
+            '    testImplementation("junit:junit:4.13.2")\n',
+            1,
+        )
     app_kts.write_text(text)
 
 app_groovy = Path('android/app/build.gradle')
@@ -110,6 +126,13 @@ fi
 
 if [[ -d platform/android_widget/app ]]; then
   cp -R platform/android_widget/app/. android/app/
+fi
+
+if [[ -d platform/android_sync/app ]]; then
+  cp -R platform/android_sync/app/. android/app/
+fi
+
+if [[ -d platform/android_widget/app || -d platform/android_sync/app ]]; then
 
   python3 - <<'PY'
 from pathlib import Path
@@ -118,13 +141,22 @@ import re
 manifest = Path('android/app/src/main/AndroidManifest.xml')
 text = manifest.read_text()
 
-permission = '    <uses-permission android:name="android.permission.INTERNET" />\n'
-if 'android.permission.INTERNET' not in text:
-    text = text.replace(
-        '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n',
-        '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n' + permission,
-        1,
-    )
+permissions = (
+    'android.permission.INTERNET',
+    'android.permission.ACCESS_NETWORK_STATE',
+    'android.permission.RECEIVE_BOOT_COMPLETED',
+)
+for permission_name in permissions:
+    if permission_name not in text:
+        permission = (
+            f'    <uses-permission android:name="{permission_name}" />\n'
+        )
+        text = text.replace(
+            '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n',
+            '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
+            + permission,
+            1,
+        )
 
 receiver = '''        <receiver
             android:name=".ScheduleWidgetProvider"
@@ -155,6 +187,25 @@ activity = '''        <activity
 '''
 if '.WidgetDatePickerActivity' not in text:
     text = text.replace('    </application>', activity + '    </application>', 1)
+
+sync_receiver = '''        <receiver
+            android:name=".DailySyncRescheduleReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+'''
+if '.DailySyncRescheduleReceiver' not in text:
+    text = text.replace(
+        '    </application>',
+        sync_receiver + '    </application>',
+        1,
+    )
 
 text = re.sub(
     r'android:label="[^"]*"',

@@ -39,17 +39,20 @@ jobs:
       - name: Bootstrap project
         run: bash tool/bootstrap.sh
 
-      - name: Apply safe Dart fixes
-        run: dart fix --apply
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
 
-      - name: Format sources
-        run: dart format lib test
+      - name: Verify feature boundaries
+        run: bash tool/verify_architecture.sh
 
       - name: Analyze
         run: flutter analyze
 
       - name: Test
         run: flutter test --coverage
+
+      - name: Test Android scheduling and widget timeline
+        run: android/gradlew -p android testDebugUnitTest
 
       - name: Build debug APK
         run: flutter build apk --debug

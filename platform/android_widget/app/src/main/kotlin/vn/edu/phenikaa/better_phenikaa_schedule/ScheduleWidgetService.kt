@@ -16,10 +16,6 @@ import android.text.TextUtils
 import android.util.TypedValue
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
-import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class ScheduleWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
@@ -104,7 +100,7 @@ private class ScheduleWidgetFactory(
     override fun hasStableIds(): Boolean = true
 
     private fun reload() {
-        items = readWidgetClasses(context, widgetId)
+        items = WidgetSnapshotStore.read(context, widgetId).items
     }
 
     private fun renderSlide(item: WidgetClass): Bitmap {
@@ -205,158 +201,6 @@ private class ScheduleWidgetFactory(
     }
 }
 
-private fun readWidgetClasses(context: Context, widgetId: Int): List<WidgetClass> {
-    val raw = context
-        .getSharedPreferences(SNAPSHOT_PREFS, Context.MODE_PRIVATE)
-        .getString(SNAPSHOT_KEY, null)
-        ?: return emptyList()
-
-    return try {
-        val today = SimpleDateFormat(DATE_PATTERN, Locale.US).format(Date())
-        val now = SimpleDateFormat(DATE_TIME_PATTERN, Locale.US).format(Date())
-        val selectedDate = if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            today
-        } else {
-            context
-                .getSharedPreferences(
-                    ScheduleWidgetProvider.WIDGET_SELECTION_PREFS,
-                    Context.MODE_PRIVATE,
-                )
-                .getString(ScheduleWidgetProvider.selectedDateKey(widgetId), null)
-                ?.takeIf(::isIsoDate)
-                ?: today
-        }
-
-        val records = JSONObject(raw).optJSONArray("records") ?: return emptyList()
-        val allItems = ArrayList<WidgetClass>(records.length())
-        for (i in 0 until records.length()) {
-            val record = records.optJSONObject(i) ?: continue
-            if (record.optBoolean("isExam", false)) {
-                continue
-            }
-            val startAt = record.optString("startAt")
-            val endAt = record.optString("endAt")
-            if (startAt.length < 16 || endAt.length < 16) {
-                continue
-            }
-
-            val dateKey = startAt.take(10)
-            if (!isIsoDate(dateKey)) {
-                continue
-            }
-            val room = record.optString("room")
-            val date = "${dateKey.substring(8, 10)}/${dateKey.substring(5, 7)}"
-            val roomAndDate = listOf(room, date)
-                .filter { it.isNotBlank() }
-                .joinToString(" • ")
-            val startTime = startAt.substring(11, 16)
-            val endTime = if (endAt.length >= 16) endAt.substring(11, 16) else ""
-            val subject = record.optString("subjectName").ifBlank { "Lịch học Phenikaa" }
-            val id = record.optString("id").ifBlank { "$startAt|$subject|$room" }
-            allItems.add(
-                WidgetClass(
-                    id = id,
-                    subject = subject,
-                    room = roomAndDate,
-                    time = if (endTime.isBlank()) startTime else "$startTime - $endTime",
-                    startAt = startAt,
-                    endAt = endAt,
-                    dateKey = dateKey,
-                ),
-            )
-        }
-
-        // Index zero is the selected date (today by default). Future dates follow in
-        // ascending order. Older dates are also ascending, so the final item is the
-        // day immediately before the selected date. With loopViews enabled, swiping
-        // backwards from the selected day therefore reaches the previous day.
-        // Keep the complete collection: truncating this list used to remove the most
-        // recent past dates because they intentionally sit at the end for loop order.
-        val ordered = allItems.sortedWith(
-            Comparator { a, b ->
-                val aGroup = dateGroup(a.dateKey, selectedDate)
-                val bGroup = dateGroup(b.dateKey, selectedDate)
-                if (aGroup != bGroup) {
-                    return@Comparator aGroup.compareTo(bGroup)
-                }
-
-                when (aGroup) {
-                    0 -> {
-                        if (selectedDate == today) {
-                            val aUpcoming = a.endAt.take(19) >= now
-                            val bUpcoming = b.endAt.take(19) >= now
-                            if (aUpcoming != bUpcoming) {
-                                return@Comparator if (aUpcoming) -1 else 1
-                            }
-                            if (aUpcoming) {
-                                a.startAt.compareTo(b.startAt)
-                            } else {
-                                b.startAt.compareTo(a.startAt)
-                            }
-                        } else {
-                            a.startAt.compareTo(b.startAt)
-                        }
-                    }
-                    1 -> a.startAt.compareTo(b.startAt)
-                    else -> a.startAt.compareTo(b.startAt)
-                }
-            },
-        )
-
-        val selectedHasSchedule = ordered.any { it.dateKey == selectedDate }
-        val result = ArrayList<WidgetClass>(ordered.size + if (selectedHasSchedule) 0 else 1)
-        if (!selectedHasSchedule) {
-            val displayDate = "${selectedDate.substring(8, 10)}/${selectedDate.substring(5, 7)}"
-            result.add(
-                WidgetClass(
-                    id = "empty-day-$selectedDate",
-                    subject = "Không có lịch học",
-                    room = if (selectedDate == today) "Hôm nay • $displayDate" else displayDate,
-                    time = "",
-                    startAt = "${selectedDate}T00:00:00",
-                    endAt = "${selectedDate}T23:59:59",
-                    dateKey = selectedDate,
-                ),
-            )
-        }
-        result.addAll(ordered)
-        result
-    } catch (_: Exception) {
-        emptyList()
-    }
-}
-
-private fun dateGroup(date: String, selectedDate: String): Int = when {
-    date == selectedDate -> 0
-    date > selectedDate -> 1
-    else -> 2
-}
-
-private fun isIsoDate(value: String): Boolean =
-    value.length == 10 &&
-        value[4] == '-' &&
-        value[7] == '-' &&
-        value.substring(0, 4).all(Char::isDigit) &&
-        value.substring(5, 7).all(Char::isDigit) &&
-        value.substring(8, 10).all(Char::isDigit)
-
-private data class WidgetClass(
-    val id: String,
-    val subject: String,
-    val room: String,
-    val time: String,
-    val startAt: String,
-    val endAt: String,
-    val dateKey: String,
-) {
-    val stableId: Long
-        get() = id.hashCode().toLong()
-}
-
-private const val SNAPSHOT_PREFS = "FlutterSharedPreferences"
-private const val SNAPSHOT_KEY = "flutter.better_phenikaa_snapshot_v1"
-private const val DATE_PATTERN = "yyyy-MM-dd"
-private const val DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss"
 private const val DEFAULT_WIDGET_WIDTH_DP = 320
 private const val DEFAULT_WIDGET_HEIGHT_DP = 64
 

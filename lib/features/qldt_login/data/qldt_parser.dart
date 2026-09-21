@@ -1,107 +1,9 @@
 import 'dart:convert';
 
+import 'package:better_phenikaa_schedule/features/sync/domain/schedule_snapshot.dart';
 import 'package:html/parser.dart' as html_parser;
 
-final class ScheduleRecord {
-  const new({
-    required this.id,
-    required this.isExam,
-    required this.subjectName,
-    required this.room,
-    required this.startAt,
-    required this.endAt,
-    this.className = '',
-    this.examForm = '',
-    this.periodStart,
-    this.periodEnd,
-  });
-
-  factory fromJson(Map<String, Object?> json) {
-    return ScheduleRecord(
-      id: json['id']! as String,
-      isExam: json['isExam']! as bool,
-      subjectName: json['subjectName']! as String,
-      room: json['room']! as String,
-      startAt: DateTime.parse(json['startAt']! as String),
-      endAt: DateTime.parse(json['endAt']! as String),
-      className: json['className'] as String? ?? '',
-      examForm: json['examForm'] as String? ?? '',
-      periodStart: json['periodStart'] as int?,
-      periodEnd: json['periodEnd'] as int?,
-    );
-  }
-
-  final String id;
-  final bool isExam;
-  final String subjectName;
-  final String room;
-  final DateTime startAt;
-  final DateTime endAt;
-  final String className;
-  final String examForm;
-  final int? periodStart;
-  final int? periodEnd;
-
-  Map<String, Object?> toJson() => <String, Object?>{
-    'id': id,
-    'isExam': isExam,
-    'subjectName': subjectName,
-    'room': room,
-    'startAt': startAt.toIso8601String(),
-    'endAt': endAt.toIso8601String(),
-    'className': className,
-    'examForm': examForm,
-    'periodStart': periodStart,
-    'periodEnd': periodEnd,
-  };
-}
-
-final class ImportedScheduleData {
-  const new({
-    required this.displayName,
-    required this.records,
-    required this.syncedAt,
-    this.source = 'qldt',
-  });
-
-  factory decode(String source) {
-    final raw = jsonDecode(source) as Map<String, dynamic>;
-    final recordsRaw = raw['records'] as List<dynamic>? ?? const <dynamic>[];
-    return ImportedScheduleData(
-      displayName: raw['displayName'] as String? ?? '',
-      records: recordsRaw
-          .map(
-            (item) => ScheduleRecord.fromJson(
-              Map<String, Object?>.from(item as Map<dynamic, dynamic>),
-            ),
-          )
-          .toList(growable: false),
-      syncedAt: DateTime.parse(raw['syncedAt']! as String),
-      source: raw['source'] as String? ?? 'qldt',
-    );
-  }
-
-  final String displayName;
-  final List<ScheduleRecord> records;
-  final DateTime syncedAt;
-  final String source;
-
-  Iterable<ScheduleRecord> get classes =>
-      records.where((record) => !record.isExam);
-
-  Iterable<ScheduleRecord> get exams =>
-      records.where((record) => record.isExam);
-
-  Map<String, Object?> toJson() => <String, Object?>{
-    'displayName': displayName,
-    'records': records.map((record) => record.toJson()).toList(),
-    'syncedAt': syncedAt.toIso8601String(),
-    'source': source,
-  };
-
-  String encode() => jsonEncode(toJson());
-}
-
+/// Converts QLĐT responses into the app's normalized sync snapshot.
 final class QldtParser {
   const new();
 
@@ -125,7 +27,7 @@ final class QldtParser {
     return '';
   }
 
-  ImportedScheduleData parseLiveEnvelope(String envelopeJson) {
+  ScheduleSnapshot parseLiveEnvelope(String envelopeJson) {
     final envelope = jsonDecode(envelopeJson) as Map<String, dynamic>;
     final displayName = (envelope['name'] as String? ?? '').trim();
     final response = envelope['response'];
@@ -138,7 +40,7 @@ final class QldtParser {
     );
   }
 
-  ImportedScheduleData parseApiResponse(
+  ScheduleSnapshot parseApiResponse(
     Map<String, dynamic> response, {
     required String displayName,
   }) {
@@ -150,7 +52,7 @@ final class QldtParser {
       throw const FormatException('QLĐT Data is not a list.');
     }
 
-    final records = <ScheduleRecord>[];
+    final recordsById = <String, ScheduleRecord>{};
     for (final rawItem in rawData) {
       if (rawItem is! Map) {
         continue;
@@ -158,12 +60,17 @@ final class QldtParser {
       final item = Map<String, dynamic>.from(rawItem);
       final record = _parseRecord(item);
       if (record != null) {
-        records.add(record);
+        recordsById[record.id] = record;
       }
     }
 
+    if (rawData.isNotEmpty && recordsById.isEmpty) {
+      throw const FormatException('Không có bản ghi QLĐT hợp lệ.');
+    }
+
+    final records = recordsById.values.toList(growable: false);
     records.sort((a, b) => a.startAt.compareTo(b.startAt));
-    return ImportedScheduleData(
+    return ScheduleSnapshot(
       displayName: displayName,
       records: records,
       syncedAt: DateTime.now(),
@@ -189,7 +96,15 @@ final class QldtParser {
     if (startHour == null ||
         startMinute == null ||
         endHour == null ||
-        endMinute == null) {
+        endMinute == null ||
+        startHour < 0 ||
+        startHour > 23 ||
+        endHour < 0 ||
+        endHour > 23 ||
+        startMinute < 0 ||
+        startMinute > 59 ||
+        endMinute < 0 ||
+        endMinute > 59) {
       return null;
     }
 
@@ -197,8 +112,6 @@ final class QldtParser {
     final room = isExam
         ? _firstNonEmpty(<Object?>[item['PHONGHOC_TEN'], item['PHONGTHI']])
         : _firstNonEmpty(<Object?>[item['PHONGHOC_TEN'], item['TENPHONGHOC']]);
-    final className = _string(item['TENLOPHOCPHAN']);
-    final examForm = _string(item['DANGKY_LOPHOCPHAN_TEN']);
     final startAt = DateTime(
       day.year,
       day.month,
@@ -207,23 +120,25 @@ final class QldtParser {
       startMinute,
     );
     final endAt = DateTime(day.year, day.month, day.day, endHour, endMinute);
-    final id = <String>[
-      if (isExam) 'exam' else 'class',
-      dateText,
-      subjectName,
-      '$startHour:$startMinute',
-      room,
-    ].join('|');
+    if (!endAt.isAfter(startAt)) {
+      return null;
+    }
 
     return ScheduleRecord(
-      id: id,
+      id: <String>[
+        if (isExam) 'exam' else 'class',
+        dateText,
+        subjectName,
+        '$startHour:$startMinute',
+        room,
+      ].join('|'),
       isExam: isExam,
       subjectName: subjectName,
       room: room,
       startAt: startAt,
       endAt: endAt,
-      className: className,
-      examForm: examForm,
+      className: _string(item['TENLOPHOCPHAN']),
+      examForm: _string(item['DANGKY_LOPHOCPHAN_TEN']),
       periodStart: _int(item['TIETBATDAU']),
       periodEnd: _int(item['TIETKETTHUC']),
     );
@@ -240,7 +155,11 @@ final class QldtParser {
     if (day == null || month == null || year == null) {
       return null;
     }
-    return DateTime(year, month, day);
+    final parsed = DateTime(year, month, day);
+    if (parsed.year != year || parsed.month != month || parsed.day != day) {
+      return null;
+    }
+    return parsed;
   }
 
   static String _firstNonEmpty(List<Object?> values) {

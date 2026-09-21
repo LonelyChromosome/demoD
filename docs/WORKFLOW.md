@@ -1,51 +1,44 @@
-# Git workflow cho nhóm 4 người
+# Development workflow
 
-## Nhánh
+## Branch
+
+Tạo branch theo thay đổi, ví dụ:
 
 ```text
-main
-  └─ develop
-      ├─ feature/qldt-intake-khanh
-      ├─ feature/timetable-exam-huy
-      ├─ feature/local-data-sync-duong
-      └─ feature/widget-settings-dao
+feature/feature-first-refactor
+feature/qldt-login-diagnostics
+feature/daily-sync
+fix/widget-navigation
 ```
 
-## Luồng làm việc hằng ngày
+Tên branch mô tả feature, không mô tả người thực hiện và không tạo chuỗi
+`fix2/fix3/old/new`.
 
-1. Pull `develop` mới nhất.
-2. Rebase/merge vào feature branch cá nhân.
-3. Code theo phạm vi ownership.
-4. Chạy `bash tool/quality.sh`.
-5. Push feature branch và mở PR vào `develop`.
-6. Sửa toàn bộ CI/review trước khi merge.
-7. Cuối milestone, Lead mở PR `develop -> main`.
+## Mỗi checkpoint
 
-## Commit convention
+```bash
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+flutter build apk --debug
+```
 
-Dùng prefix ngắn:
+Commit nhỏ theo ranh giới feature. Không trộn refactor, thay UI và workaround
+thiết bị trong cùng commit.
 
-- `feat:` tính năng
-- `fix:` sửa lỗi
-- `refactor:` tái cấu trúc không đổi behavior
-- `test:` test
-- `docs:` tài liệu
-- `chore:` tooling/dependency
+## Regression bắt buộc
 
-Ví dụ: `feat(timetable): add weekly timeline navigation`
+- App không có dữ liệu mở đúng login screen.
+- Fetch/parse lỗi giữ snapshot cũ.
+- Sync thành công lưu trước khi refresh widget.
+- Logout hủy job, xóa session, local snapshot và widget snapshot.
+- Widget chọn đúng ngày/index và vuốt được về record trước/lên record sau.
+- Job nền không mở Activity/UI và kết thúc/destroy WebView.
+- Mốc 06:00 được tính theo timezone hiện tại; receiver căn lại sau thay đổi.
+- WebView không khóa redirect chỉ vào một host và không bỏ qua SSL.
 
-## Definition of Done
+## Review dependency direction
 
-Một task chỉ xong khi:
-
-- Build được.
-- Format/analyze/test xanh.
-- Không lộ dữ liệu nhạy cảm.
-- Có loading/empty/error state nếu là UI async.
-- Có xử lý offline/failure nếu chạm sync.
-- Contract không bị thay đổi ngầm.
-- Reviewer có cách test rõ ràng.
-
-## Merge conflict
-
-Không sửa file ownership của người khác chỉ để giải conflict mà chưa trao đổi. Với `lib/core/contracts/`, ưu tiên PR nhỏ, tách riêng khỏi feature lớn.
+Feature UI chỉ đọc domain model/contract. Không import implementation storage,
+WebView hoặc native widget trực tiếp. Mọi thay đổi snapshot schema phải có test
+contract và update cả Dart/Kotlin consumer.

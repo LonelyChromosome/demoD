@@ -178,9 +178,11 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_calendar, chooseDate)
 
-        // The selected day (today by default) remains the first item whenever the
-        // provider refreshes. Ordinary StackView swipes continue to loop normally.
-        views.setDisplayedChild(R.id.widget_list, 0)
+        // Anchor the selected day at its real chronological index. Keeping earlier
+        // items before it and later items after it lets StackView swipe naturally in
+        // both directions without looping the collection boundaries.
+        val selectedIndex = WidgetSnapshotStore.read(context, widgetId).selectedIndex
+        views.setDisplayedChild(R.id.widget_list, selectedIndex)
         return views
     }
 
