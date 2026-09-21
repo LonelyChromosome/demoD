@@ -57,7 +57,7 @@ jobs:
         run: flutter test
 
       - name: Test Android scheduling and widget timeline
-        run: android/gradlew -p android testDebugUnitTest
+        run: android/gradlew -p android :app:testDebugUnitTest
 
       - name: Verify official production source
         shell: bash

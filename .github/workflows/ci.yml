@@ -52,7 +52,7 @@ jobs:
         run: flutter test --coverage
 
       - name: Test Android scheduling and widget timeline
-        run: android/gradlew -p android testDebugUnitTest
+        run: android/gradlew -p android :app:testDebugUnitTest
 
       - name: Build debug APK
         run: flutter build apk --debug
