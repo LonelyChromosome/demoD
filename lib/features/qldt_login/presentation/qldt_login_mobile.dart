@@ -45,7 +45,7 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
   int _webViewGeneration = 0;
   int _readinessCycle = 0;
   int _readinessAttempt = 0;
-  QldtPageProbe _lastProbe = const QldtPageProbe.empty();
+  QldtPageProbe _lastProbe = QldtPageProbe.empty;
   String _webViewProvider = 'đang xác định';
   final List<String> _consoleMessages = <String>[];
   String _status = 'Đăng nhập bằng tài khoản Microsoft của bạn.';
@@ -488,7 +488,7 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
       _syncing = false;
       _autoSyncStarted = false;
       _readinessTimedOut = false;
-      _lastProbe = const QldtPageProbe.empty();
+      _lastProbe = QldtPageProbe.empty;
       _consoleMessages.clear();
       _status = _hybridComposition
           ? 'Đang tải lại bằng chế độ hiển thị chuẩn...'
@@ -594,7 +594,7 @@ class _QldtWebLoginScreenState extends State<_QldtWebLoginScreen> {
 }
 
 class _WebViewDiagnosticActions extends StatelessWidget {
-  const _WebViewDiagnosticActions({
+  const new({
     required this.url,
     required this.compatibilityMode,
     required this.onCopy,

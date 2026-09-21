@@ -6,7 +6,7 @@ import 'dart:convert';
 /// cookies, query parameters, or fragments. It can therefore be copied into a
 /// bug report without exposing a student's session.
 class QldtPageProbe {
-  const QldtPageProbe({
+  const new({
     required this.url,
     required this.readyState,
     required this.titleLength,
@@ -29,27 +29,28 @@ class QldtPageProbe {
     required this.hasFlutterBridge,
   });
 
-  const QldtPageProbe.empty()
-    : url = '',
-      readyState = 'unknown',
-      titleLength = -1,
-      hasBody = false,
-      bodyChildren = -1,
-      bodyTextLength = -1,
-      htmlLength = -1,
-      scriptCount = -1,
-      viewportWidth = -1,
-      viewportHeight = -1,
-      documentWidth = -1,
-      documentHeight = -1,
-      devicePixelRatio = -1,
-      backgroundColor = 'unknown',
-      visibilityState = 'unknown',
-      hasEdu = false,
-      hasEduSystem = false,
-      hasUserId = false,
-      hasRequestFunction = false,
-      hasFlutterBridge = false;
+  static const empty = QldtPageProbe(
+    url: '',
+    readyState: 'unknown',
+    titleLength: -1,
+    hasBody: false,
+    bodyChildren: -1,
+    bodyTextLength: -1,
+    htmlLength: -1,
+    scriptCount: -1,
+    viewportWidth: -1,
+    viewportHeight: -1,
+    documentWidth: -1,
+    documentHeight: -1,
+    devicePixelRatio: -1,
+    backgroundColor: 'unknown',
+    visibilityState: 'unknown',
+    hasEdu: false,
+    hasEduSystem: false,
+    hasUserId: false,
+    hasRequestFunction: false,
+    hasFlutterBridge: false,
+  );
 
   final String url;
   final String readyState;
@@ -85,7 +86,7 @@ class QldtPageProbe {
   /// Android returns JavaScript values in slightly different shapes across
   /// WebView versions. Accept both a map and one/two layers of JSON strings.
   static QldtPageProbe? tryParse(Object? value) {
-    Object? decoded = value;
+    var decoded = value;
     for (var index = 0; index < 2 && decoded is String; index += 1) {
       try {
         decoded = jsonDecode(decoded);
@@ -135,15 +136,10 @@ class QldtPageProbe {
       'mode=${hybridComposition ? 'hybrid' : 'compatibility'}',
       'provider=$provider',
       'url=$safeUrl',
-      'document=$readyState visibility=$visibilityState '
-          'titleLength=$titleLength',
-      'dom=body:$hasBody children:$bodyChildren text:$bodyTextLength '
-          'html:$htmlLength scripts:$scriptCount',
-      'viewport=${viewportWidth}x$viewportHeight@$devicePixelRatio '
-          'document=${documentWidth}x$documentHeight '
-          'background=$backgroundColor',
-      'bridge=flutter:$hasFlutterBridge edu:$hasEdu '
-          'system:$hasEduSystem user:$hasUserId request:$hasRequestFunction',
+      'document=$readyState visibility=$visibilityState titleLength=$titleLength',
+      'dom=body:$hasBody children:$bodyChildren text:$bodyTextLength html:$htmlLength scripts:$scriptCount',
+      'viewport=${viewportWidth}x$viewportHeight@$devicePixelRatio document=${documentWidth}x$documentHeight background=$backgroundColor',
+      'bridge=flutter:$hasFlutterBridge edu:$hasEdu system:$hasEduSystem user:$hasUserId request:$hasRequestFunction',
       'console=$messages',
     ].join('\n');
   }
