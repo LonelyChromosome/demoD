@@ -86,7 +86,7 @@ class QldtDailySyncWorker(
                         )
                         return Result.success()
                     }
-                    DailyWidgetRefresher.refresh(applicationContext)
+                    DailyWidgetRefresher.refreshToday(applicationContext)
                     DailySyncScheduler.recordSuccess(
                         applicationContext,
                         System.currentTimeMillis(),
@@ -605,13 +605,28 @@ private object QldtSnapshotCodec {
 }
 
 private object DailyWidgetRefresher {
-    fun refresh(context: Context) {
+    fun refreshToday(context: Context) {
         val manager = AppWidgetManager.getInstance(context)
         val component = ComponentName(context, ScheduleWidgetProvider::class.java)
         val widgetIds = manager.getAppWidgetIds(component)
         if (widgetIds.isEmpty()) {
             return
         }
+
+        // A date chosen from the widget calendar is intentionally sticky during
+        // the day. The successful 06:00 sync starts a new daily view, so clear
+        // that per-widget override before the provider resolves its selected day.
+        // WidgetSnapshotStore will then anchor every widget to the device's
+        // current local date and, when possible, the next unfinished class.
+        val selectionPrefs = context.getSharedPreferences(
+            ScheduleWidgetProvider.WIDGET_SELECTION_PREFS,
+            Context.MODE_PRIVATE,
+        )
+        val selectionEditor = selectionPrefs.edit()
+        widgetIds.forEach { widgetId ->
+            selectionEditor.remove(ScheduleWidgetProvider.selectedDateKey(widgetId))
+        }
+        selectionEditor.commit()
 
         manager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list)
         val widgetData = context.getSharedPreferences(
