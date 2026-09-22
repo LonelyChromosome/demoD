@@ -1,4 +1,4 @@
-name: Build Better Phenikaa App v1.0.5
+name: Build Better Phenikaa App v1.0.7
 
 on:
   push:
@@ -63,7 +63,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '^version: 1.0.5+6$' pubspec.yaml
+          grep -q '^version: 1.0.7+8$' pubspec.yaml
           grep -q 'android:label="Better Phenikaa App"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:icon="@mipmap/ic_launcher"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:roundIcon="@mipmap/ic_launcher_round"' android/app/src/main/AndroidManifest.xml
@@ -110,17 +110,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/Better_Phenikaa_App_v1.0.5.apk
-          sha256sum dist/Better_Phenikaa_App_v1.0.5.apk > dist/Better_Phenikaa_App_v1.0.5.sha256
-          test -s dist/Better_Phenikaa_App_v1.0.5.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dist/Better_Phenikaa_App_v1.0.7.apk
+          sha256sum dist/Better_Phenikaa_App_v1.0.7.apk > dist/Better_Phenikaa_App_v1.0.7.sha256
+          test -s dist/Better_Phenikaa_App_v1.0.7.apk
           ls -lh dist
 
       - name: Upload Better Phenikaa App
         uses: actions/upload-artifact@v4
         with:
-          name: Better-Phenikaa-App-v1.0.5
+          name: Better-Phenikaa-App-v1.0.7
           path: |
-            dist/Better_Phenikaa_App_v1.0.5.apk
-            dist/Better_Phenikaa_App_v1.0.5.sha256
+            dist/Better_Phenikaa_App_v1.0.7.apk
+            dist/Better_Phenikaa_App_v1.0.7.sha256
           retention-days: 30
           if-no-files-found: error
