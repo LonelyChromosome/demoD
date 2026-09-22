@@ -12,63 +12,9 @@ on:
       - develop
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  cleanup_obsolete_branches:
-    if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.head_commit.message == 'chore: delete obsolete branches' }}"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Delete obsolete branches
-        shell: bash
-        run: |
-          set -u
-          failures=0
-          branches=(
-            "dependabot/pub/drift_dev-2.35.0"
-            "deploy/github-pages"
-            "develop"
-            "feature/full-app-implementation"
-            "feature/full-app-implementation-live"
-            "feature/full-app-implementation-pages"
-            "feature/full-app-implementation-pages-live"
-            "feature/full-app-implementation-temp"
-            "feature/local-data-sync"
-            "feature/local-data-sync-duong"
-            "feature/pages-live"
-            "feature/qldt-intake"
-            "feature/qldt-intake-khanh"
-            "feature/timetable-exam"
-            "feature/timetable-exam-huy"
-            "feature/widget-settings"
-            "feature/widget-settings-dao"
-            "feature/widget-stop-at-end"
-            "github-pages-config"
-            "pages"
-            "pages-deploy"
-            "pages-workflow"
-            "test-pages-workflow"
-            "tmp-fix-qldt-domain"
-          )
-
-          for branch in "${branches[@]}"; do
-            if git ls-remote --exit-code --heads origin "refs/heads/${branch}" >/dev/null 2>&1; then
-              echo "Deleting ${branch}"
-              if ! git push origin --delete "${branch}"; then
-                echo "::error::Failed to delete ${branch}"
-                failures=1
-              fi
-            else
-              echo "Already absent: ${branch}"
-            fi
-          done
-          exit "${failures}"
-
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 25
