@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   cleanup_obsolete_branches:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.head_commit.message == 'chore: delete obsolete branches' }}
+    if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.head_commit.message == 'chore: delete obsolete branches' }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
